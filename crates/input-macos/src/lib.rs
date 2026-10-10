@@ -1,0 +1,1 @@
+//! macOS input backend boundary.

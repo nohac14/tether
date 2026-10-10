@@ -1,0 +1,12 @@
+[package]
+name = "tether-input-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tether-test-support = { path = "../test-support" }

@@ -1,0 +1,31 @@
+{
+  "name": "tether",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0"
+  },
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "check:clippy": "cargo clippy --workspace --all-targets -- -D warnings",
+    "check:eslint": "eslint .",
+    "check:format": "cargo fmt --all --check",
+    "check:links": "node tooling/check-links.mjs",
+    "check:markdown": "markdownlint-cli2",
+    "check:prettier": "prettier --check .",
+    "check:types": "pnpm --recursive run typecheck",
+    "test:unit": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.11.0",
+    "eslint": "10.11.0",
+    "markdownlint-cli2": "0.23.3",
+    "prettier": "3.9.7",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "8.1.0",
+    "vitest": "5.0.3"
+  }
+}

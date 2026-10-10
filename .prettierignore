@@ -1,0 +1,7 @@
+**/dist
+**/node_modules
+**/target
+apps/mobile-web/src/protocol/generated
+Cargo.lock
+pnpm-lock.yaml
+*.md

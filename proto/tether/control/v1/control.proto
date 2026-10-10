@@ -1,0 +1,367 @@
+syntax = "proto3";
+
+package tether.control.v1;
+
+// ClientEnvelope is the only client-to-server WebSocket binary payload.
+message ClientEnvelope {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  uint64 sequence = 3;
+  uint64 session_epoch = 4;
+  uint64 client_timestamp_micros = 5;
+
+  reserved 6 to 9;
+
+  oneof payload {
+    ClientHello client_hello = 10;
+    ClientOperationBatch operation_batch = 11;
+    HeartbeatPing heartbeat_ping = 12;
+    ClientLeaving client_leaving = 13;
+  }
+}
+
+// ServerEnvelope is the only server-to-client WebSocket binary payload.
+message ServerEnvelope {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  uint64 sequence = 3;
+  uint64 session_epoch = 4;
+
+  reserved 5 to 9;
+
+  oneof payload {
+    ServerHello server_hello = 10;
+    HeartbeatPong heartbeat_pong = 11;
+    CapabilitySnapshot capability_snapshot = 12;
+    ControlState control_state = 13;
+    ProtocolError protocol_error = 14;
+  }
+}
+
+// ClientHello begins application protocol negotiation after authenticated upgrade.
+message ClientHello {
+  uint32 protocol_major = 1;
+  uint32 minimum_protocol_minor = 2;
+  uint32 maximum_protocol_minor = 3;
+  string build_identifier = 4;
+  string client_display_name = 5;
+  ClientLimits limits = 6;
+  repeated ClientCapability capabilities = 7;
+
+  reserved 8 to 15;
+}
+
+// ClientLimits declares ceilings the browser can safely receive or produce.
+message ClientLimits {
+  uint32 maximum_encoded_message_bytes = 1;
+  uint32 maximum_operations_per_batch = 2;
+  uint32 maximum_text_operation_bytes = 3;
+}
+
+// ClientCapability identifies mandatory or optional browser runtime behavior.
+enum ClientCapability {
+  CLIENT_CAPABILITY_UNSPECIFIED = 0;
+  CLIENT_CAPABILITY_ORDERED_OPERATION_BATCHES = 1;
+  CLIENT_CAPABILITY_APPLICATION_HEARTBEAT = 2;
+  CLIENT_CAPABILITY_COMPOSE_TEXT = 3;
+}
+
+// ServerHello completes negotiation and supplies authoritative runtime policy.
+message ServerHello {
+  uint32 selected_protocol_major = 1;
+  uint32 selected_protocol_minor = 2;
+  bytes connection_identifier = 3;
+  uint32 heartbeat_interval_millis = 4;
+  uint32 heartbeat_timeout_millis = 5;
+  ProtocolLimits limits = 6;
+  CapabilitySnapshot capabilities = 7;
+  ControlState control_state = 8;
+
+  reserved 9 to 15;
+}
+
+// ProtocolLimits contains effective limits that never exceed version hard limits.
+message ProtocolLimits {
+  uint32 maximum_encoded_message_bytes = 1;
+  uint32 maximum_operations_per_batch = 2;
+  uint32 maximum_text_operation_bytes = 3;
+  uint32 maximum_text_bytes_per_batch = 4;
+  uint32 maximum_absolute_fixed_delta = 5;
+  uint32 maximum_atomic_click_count = 6;
+}
+
+// ClientOperationBatch preserves the exact semantic order of its operations.
+message ClientOperationBatch {
+  repeated ClientOperation operations = 1;
+}
+
+// ClientOperation is one validated action in an ordered batch.
+message ClientOperation {
+  uint32 timestamp_offset_micros = 1;
+
+  reserved 2 to 9;
+
+  oneof action {
+    PointerMove pointer_move = 10;
+    Scroll scroll = 11;
+    MouseButtonTransition mouse_button_transition = 12;
+    MouseButtonClick mouse_button_click = 13;
+    PhysicalKeyTransition physical_key_transition = 14;
+    TextInsertion text_insertion = 15;
+    TextEdit text_edit = 16;
+    LogicalCommandAction logical_command = 17;
+    MediaCommandAction media_command = 18;
+    RequestControl request_control = 19;
+    RelinquishControl relinquish_control = 20;
+    ReleaseAll release_all = 21;
+  }
+}
+
+// PointerMove carries relative normalized pointer units at 1/1024 resolution.
+message PointerMove {
+  sint32 delta_x_1024 = 1;
+  sint32 delta_y_1024 = 2;
+}
+
+// Scroll carries one normalized relative axis at 1/1024 resolution.
+message Scroll {
+  ScrollAxis axis = 1;
+  sint32 delta_1024 = 2;
+}
+
+// ScrollAxis keeps horizontal and vertical translation independent.
+enum ScrollAxis {
+  SCROLL_AXIS_UNSPECIFIED = 0;
+  SCROLL_AXIS_VERTICAL = 1;
+  SCROLL_AXIS_HORIZONTAL = 2;
+}
+
+// MouseButton is the closed set of version-one semantic buttons.
+enum MouseButton {
+  MOUSE_BUTTON_UNSPECIFIED = 0;
+  MOUSE_BUTTON_LEFT = 1;
+  MOUSE_BUTTON_RIGHT = 2;
+  MOUSE_BUTTON_MIDDLE = 3;
+  MOUSE_BUTTON_BACK = 4;
+  MOUSE_BUTTON_FORWARD = 5;
+}
+
+// TransitionState avoids an ambiguous default boolean for held-state changes.
+enum TransitionState {
+  TRANSITION_STATE_UNSPECIFIED = 0;
+  TRANSITION_STATE_DOWN = 1;
+  TRANSITION_STATE_UP = 2;
+}
+
+// MouseButtonTransition changes tracked held-button state.
+message MouseButtonTransition {
+  MouseButton button = 1;
+  TransitionState state = 2;
+}
+
+// MouseButtonClick performs one or two complete clicks without retained state.
+message MouseButtonClick {
+  MouseButton button = 1;
+  uint32 click_count = 2;
+}
+
+// PhysicalKey is a USB HID usage pair; version one permits page 0x07 only.
+message PhysicalKey {
+  uint32 usage_page = 1;
+  uint32 usage_id = 2;
+}
+
+// PhysicalKeyTransition changes tracked held-key state.
+message PhysicalKeyTransition {
+  PhysicalKey key = 1;
+  TransitionState state = 2;
+}
+
+// TextInsertion is validated UTF-8 and is never interpreted as a physical key.
+message TextInsertion {
+  string text = 1;
+}
+
+// TextEdit carries only edits the mobile text engine can represent safely.
+message TextEdit {
+  TextEditCommand command = 1;
+  uint32 repeat_count = 2;
+}
+
+// TextEditCommand is separate from physical navigation keys and opaque text.
+enum TextEditCommand {
+  TEXT_EDIT_COMMAND_UNSPECIFIED = 0;
+  TEXT_EDIT_COMMAND_DELETE_BACKWARD = 1;
+  TEXT_EDIT_COMMAND_DELETE_FORWARD = 2;
+  TEXT_EDIT_COMMAND_INSERT_LINE_BREAK = 3;
+}
+
+// LogicalCommandAction requests a platform-conventional application command.
+message LogicalCommandAction {
+  LogicalCommand command = 1;
+}
+
+// LogicalCommand cannot encode an arbitrary command, script, or key label.
+enum LogicalCommand {
+  LOGICAL_COMMAND_UNSPECIFIED = 0;
+  LOGICAL_COMMAND_COPY = 1;
+  LOGICAL_COMMAND_CUT = 2;
+  LOGICAL_COMMAND_PASTE_SHORTCUT = 3;
+  LOGICAL_COMMAND_UNDO = 4;
+  LOGICAL_COMMAND_REDO = 5;
+  LOGICAL_COMMAND_SELECT_ALL = 6;
+  LOGICAL_COMMAND_SAVE = 7;
+  LOGICAL_COMMAND_FIND = 8;
+  LOGICAL_COMMAND_CLOSE_TAB = 9;
+  LOGICAL_COMMAND_SWITCH_APPLICATION = 10;
+  LOGICAL_COMMAND_TASK_MANAGER_EQUIVALENT = 11;
+}
+
+// MediaCommandAction requests one capability-gated media operation.
+message MediaCommandAction {
+  MediaCommand command = 1;
+}
+
+// MediaCommand is a closed capability-gated command set.
+enum MediaCommand {
+  MEDIA_COMMAND_UNSPECIFIED = 0;
+  MEDIA_COMMAND_PLAY_PAUSE = 1;
+  MEDIA_COMMAND_NEXT_TRACK = 2;
+  MEDIA_COMMAND_PREVIOUS_TRACK = 3;
+  MEDIA_COMMAND_VOLUME_UP = 4;
+  MEDIA_COMMAND_VOLUME_DOWN = 5;
+  MEDIA_COMMAND_MUTE = 6;
+}
+
+// RequestControl asks the session actor for exclusive ownership.
+message RequestControl {}
+
+// RelinquishControl voluntarily gives up exclusive ownership.
+message RelinquishControl {}
+
+// ReleaseAll requests immediate idempotent held-input neutralization.
+message ReleaseAll {}
+
+// HeartbeatPing must be scheduled and sent by the browser JavaScript runtime.
+message HeartbeatPing {
+  uint64 heartbeat_identifier = 1;
+}
+
+// HeartbeatPong echoes the browser identifier for client-local RTT estimation.
+message HeartbeatPong {
+  uint64 heartbeat_identifier = 1;
+}
+
+// ClientLeaving is best effort; disconnect cleanup never depends on receiving it.
+message ClientLeaving {
+  ClientLeavingReason reason = 1;
+}
+
+// ClientLeavingReason is advisory and does not change release semantics.
+enum ClientLeavingReason {
+  CLIENT_LEAVING_REASON_UNSPECIFIED = 0;
+  CLIENT_LEAVING_REASON_USER_DISCONNECT = 1;
+  CLIENT_LEAVING_REASON_PAGE_HIDE = 2;
+  CLIENT_LEAVING_REASON_NAVIGATION = 3;
+}
+
+// CapabilitySnapshot is the server-authoritative current backend capability set.
+message CapabilitySnapshot {
+  uint64 revision = 1;
+  bool backend_initialized = 2;
+  PermissionState permission_state = 3;
+  bool user_authorization_required = 4;
+  bool pointer_available = 5;
+  bool physical_keys_available = 6;
+  bool vertical_scroll_available = 7;
+  bool horizontal_scroll_available = 8;
+  repeated MouseButton mouse_buttons = 9;
+  repeated TextMode text_modes = 10;
+  repeated LogicalCommand logical_commands = 11;
+  repeated MediaCommand media_commands = 12;
+  ProtocolLimits limits = 13;
+
+  reserved 14 to 20;
+}
+
+// PermissionState reports availability without exposing platform-native details.
+enum PermissionState {
+  PERMISSION_STATE_UNSPECIFIED = 0;
+  PERMISSION_STATE_NOT_REQUIRED = 1;
+  PERMISSION_STATE_GRANTED = 2;
+  PERMISSION_STATE_DENIED = 3;
+  PERMISSION_STATE_PROMPT_REQUIRED = 4;
+  PERMISSION_STATE_UNAVAILABLE = 5;
+}
+
+// TextMode reports honest backend text-insertion boundaries.
+enum TextMode {
+  TEXT_MODE_UNSPECIFIED = 0;
+  TEXT_MODE_ACTIVE_LAYOUT_MAPPABLE = 1;
+  TEXT_MODE_NATIVE_UNICODE_BEST_EFFORT = 2;
+  TEXT_MODE_EI_UTF8 = 3;
+}
+
+// ControlState reports this client's current ownership relationship.
+message ControlState {
+  uint64 revision = 1;
+  ControlStateKind state = 2;
+  uint64 session_epoch = 3;
+  bool this_client_controls = 4;
+}
+
+// ControlStateKind is the externally visible session state.
+enum ControlStateKind {
+  CONTROL_STATE_KIND_UNSPECIFIED = 0;
+  CONTROL_STATE_KIND_NO_CONTROLLER = 1;
+  CONTROL_STATE_KIND_STANDBY = 2;
+  CONTROL_STATE_KIND_CONTROLLING = 3;
+  CONTROL_STATE_KIND_SUSPENDED = 4;
+}
+
+// ProtocolError contains only bounded non-sensitive machine-readable context.
+message ProtocolError {
+  ProtocolErrorCode code = 1;
+  bool retryable = 2;
+  optional uint32 supported_minimum_minor = 3;
+  optional uint32 supported_maximum_minor = 4;
+  SafeNumericContext numeric_context = 5;
+
+  reserved 6 to 15;
+}
+
+// ProtocolErrorCode is safe to expose and never embeds offending values.
+enum ProtocolErrorCode {
+  PROTOCOL_ERROR_CODE_UNSPECIFIED = 0;
+  PROTOCOL_ERROR_CODE_MALFORMED_MESSAGE = 1;
+  PROTOCOL_ERROR_CODE_MESSAGE_TOO_LARGE = 2;
+  PROTOCOL_ERROR_CODE_INCOMPATIBLE_VERSION = 3;
+  PROTOCOL_ERROR_CODE_UNKNOWN_OR_UNSUPPORTED_OPERATION = 4;
+  PROTOCOL_ERROR_CODE_AUTHENTICATION_REQUIRED = 5;
+  PROTOCOL_ERROR_CODE_NOT_CONTROLLER = 6;
+  PROTOCOL_ERROR_CODE_STALE_EPOCH = 7;
+  PROTOCOL_ERROR_CODE_INVALID_SEQUENCE = 8;
+  PROTOCOL_ERROR_CODE_CAPABILITY_UNAVAILABLE = 9;
+  PROTOCOL_ERROR_CODE_RATE_LIMITED = 10;
+  PROTOCOL_ERROR_CODE_QUEUE_SATURATED = 11;
+  PROTOCOL_ERROR_CODE_BACKEND_UNAVAILABLE = 12;
+  PROTOCOL_ERROR_CODE_SERVER_SUSPENDING = 13;
+  PROTOCOL_ERROR_CODE_INTERNAL_FAILURE = 14;
+}
+
+// SafeNumericContext describes a limit without reflecting input content.
+message SafeNumericContext {
+  NumericContextKind kind = 1;
+  uint64 observed = 2;
+  uint64 limit = 3;
+}
+
+// NumericContextKind defines the meaning of safe numeric error context.
+enum NumericContextKind {
+  NUMERIC_CONTEXT_KIND_UNSPECIFIED = 0;
+  NUMERIC_CONTEXT_KIND_MESSAGE_BYTES = 1;
+  NUMERIC_CONTEXT_KIND_BATCH_OPERATIONS = 2;
+  NUMERIC_CONTEXT_KIND_TEXT_BYTES = 3;
+  NUMERIC_CONTEXT_KIND_RATE = 4;
+  NUMERIC_CONTEXT_KIND_QUEUE_BYTES = 5;
+}

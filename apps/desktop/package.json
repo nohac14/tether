@@ -1,0 +1,14 @@
+{
+  "name": "@tether/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0"
+  },
+  "scripts": {
+    "build": "node --experimental-strip-types src/main.ts",
+    "typecheck": "tsc --project tsconfig.json"
+  }
+}
