@@ -29,6 +29,7 @@ pub struct MockInputBackend {
     status: BackendStatus,
     pending_status: Option<BackendStatus>,
     calls: Vec<MockCall>,
+    release_calls: usize,
     next_sequence: u64,
     execute_results: VecDeque<Result<(), BackendError>>,
     release_reports: VecDeque<ReleaseReport>,
@@ -48,6 +49,7 @@ impl MockInputBackend {
             status: BackendStatus::unavailable(BackendKind::Mock),
             pending_status: None,
             calls: Vec::new(),
+            release_calls: 0,
             next_sequence: 0,
             execute_results: VecDeque::new(),
             release_reports: VecDeque::new(),
@@ -96,6 +98,12 @@ impl MockInputBackend {
         &self.calls
     }
 
+    /// Returns how many times emergency/native cleanup was requested.
+    #[must_use]
+    pub const fn release_calls(&self) -> usize {
+        self.release_calls
+    }
+
     /// Returns held item counts without revealing identities.
     #[must_use]
     pub fn held_counts(&self) -> (usize, usize) {
@@ -119,6 +127,10 @@ impl MockInputBackend {
             outcome,
         });
         self.next_sequence = self.next_sequence.saturating_add(1);
+        self.advance_simulated_time();
+    }
+
+    fn advance_simulated_time(&mut self) {
         self.simulated_elapsed = self
             .simulated_elapsed
             .saturating_add(self.simulated_latency);
@@ -158,6 +170,7 @@ impl fmt::Debug for MockInputBackend {
             .debug_struct("MockInputBackend")
             .field("status_revision", &self.status.revision)
             .field("call_count", &self.calls.len())
+            .field("release_call_count", &self.release_calls)
             .field("held_button_count", &self.held_buttons.len())
             .field("held_key_count", &self.held_keys.len())
             .finish_non_exhaustive()
@@ -195,6 +208,8 @@ impl InputBackend for MockInputBackend {
     }
 
     fn release_all(&mut self) -> ReleaseReport {
+        self.release_calls = self.release_calls.saturating_add(1);
+        self.advance_simulated_time();
         let held = self.held_buttons.len().saturating_add(self.held_keys.len());
         let default_report = ReleaseReport {
             attempted: u32::try_from(held).unwrap_or(u32::MAX),
@@ -366,7 +381,9 @@ mod tests {
         assert_eq!((report.attempted, report.released), (2, 2));
         assert!(report.neutral);
         assert!(mock.is_neutral());
+        assert_eq!(mock.release_calls(), 1);
         assert_eq!(mock.release_all(), ReleaseReport::neutral());
+        assert_eq!(mock.release_calls(), 2);
     }
 
     #[test]
@@ -390,7 +407,8 @@ mod tests {
         });
         assert!(!mock.release_all().neutral);
         assert!(!mock.is_neutral());
-        assert_eq!(mock.simulated_elapsed(), Duration::from_millis(4));
-        assert_eq!(clock.now(), Duration::from_millis(4));
+        assert_eq!(mock.release_calls(), 1);
+        assert_eq!(mock.simulated_elapsed(), Duration::from_millis(8));
+        assert_eq!(clock.now(), Duration::from_millis(8));
     }
 }

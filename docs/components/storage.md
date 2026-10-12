@@ -1,7 +1,7 @@
 # Local storage contract
 
-**Task:** ST-001  
-**Status:** Accepted implementation contract  
+**Tasks:** ST-001, ST-002, ST-003
+**Status:** Contract accepted; settings and identity portions implemented
 **Authority:** `SPEC.md`, especially sections 18.1, 19, 27, and 28
 
 The `config` crate owns versioned local persistence, migration, corruption
@@ -144,6 +144,15 @@ the caller's umask. Existing entries with group/other permission bits are
 tightened before sensitive reads; failure to tighten credential storage blocks
 pairing and control.
 
+When a regular file has already been opened and its path/inode/link count
+validated, permission tightening operates on that descriptor, then validates
+the path/inode relationship again. It does not reopen or chmod the pathname.
+Directory modes and atomic rename destinations necessarily remain path-based;
+the root is canonical, owner-only, and rejects symlinks. A same-user process
+with write access to the private root is outside the file-isolation boundary,
+but path swaps are still rejected where the platform exposes stable file
+identity and link counts.
+
 On Windows, create under the current user's Local App Data and apply an explicit
 DACL for the current user plus required local system/administrative principals.
 Do not inherit a broad writable ACL from a caller-controlled directory.
@@ -258,3 +267,67 @@ bounded deadline, persists only validated state, and releases the lock last.
 
 CI success on one OS does not validate another platform's replacement, locking,
 or permission semantics. Native package tests record those results separately.
+
+## ST-002 and ST-003 implementation status
+
+The `config` crate implements the settings and installation-identity portions of
+this contract. The current exact settings envelope is schema version 2; a
+schema-version-1 fixture migrates deterministically by defaulting
+`start_at_login` to false and log level to `info`, then commits revision `N + 1`
+before exposure. Paired-device documents remain owned by PA-003.
+
+Implemented settings behavior includes:
+
+- validated optional server port, bounded/deduplicated opaque approved-interface
+  identities, auto-listen, start-at-login, and closed log-level values;
+- a 256 KiB pre-allocation/read ceiling, strict envelopes and payloads,
+  duplicate/unknown-field rejection, trailing-data rejection, recursion limits
+  from the maintained JSON parser, positive revisions, and safe error categories
+  containing no values or paths;
+- the Rust 1.99 standard library's non-blocking lifetime `File::try_lock`, whose
+  documented implementations use `flock` on Unix and `LockFileEx` on Windows;
+- create-new same-directory temporary files, full write/flush/file sync,
+  re-read through the normal decoder, `fs::rename` replacement, and Unix parent
+  directory sync;
+- explicit indeterminate state after a post-replacement directory-sync failure,
+  with further commits blocked until an authoritative reload;
+- exact abandoned-temporary cleanup, corruption quarantine by rename, explicit
+  recovery confirmation, stale-revision rejection, and redacted diagnostics;
+- Unix `0700` directories and `0600` files, permission tightening, symlink
+  rejection, opened-file identity comparison, hard-link-count rejection, and
+  descriptor-based permission changes for validated open files.
+
+Implemented identity behavior includes:
+
+- independent 256-bit installation ID and 128-bit hostname seed generated from
+  `getrandom`'s OS-backed production source; deterministic seeded entropy is
+  injected only by tests;
+- strict `tether.identity` schema version 1, positive revision, lowercase exact
+  hex fields, redacted diagnostics, and a 16 KiB pre-allocation/read ceiling;
+- stable preferred `tether-<48-bit-lowercase-hex>.local` derivation plus bounded
+  deterministic conflict candidates through `-10000`;
+- the same create-new, sync, re-read, atomic-replace, parent-sync, permission,
+  symlink, opened-inode, hard-link, and exact temporary-cleanup protections as
+  settings;
+- fail-closed quarantine on malformed, legacy/invalid, or oversized identity,
+  with no silent regeneration on later restart;
+- untouched refusal of unknown newer schemas;
+- explicit reset/rotation with revision checks and a hard block while any
+  paired-device entry remains; and
+- no identity or settings document committed when initial OS entropy fails.
+
+The settings and identity implementation fails closed on non-Unix platforms with
+`PlatformPermissionEnforcementUnavailable`; it does not silently treat inherited
+Windows ACLs as compliant. Explicit Windows DACL and reparse/hard-link inspection
+remain release-blocking work under R-018. Therefore the automated macOS result
+does not establish Windows storage support or native Linux behavior.
+
+Twenty-eight automated tests cover first run/restart, settings and identity
+persistence/conflicts, deterministic identity derivation, entropy failure,
+migration, corrupt/duplicate/oversize/unknown/trailing input, unknown-newer
+schema refusal, explicit identity reset and paired-device invalidation,
+concurrent locking, settings/identity abandoned partial files, injected failures
+before every replacement phase, post-replacement sync ambiguity, redaction,
+descriptor-targeted permission changes, and Unix permission/symlink/hard-link
+behavior. The fault and entropy hooks affect tests only; the production API uses
+real filesystem and operating-system entropy operations.

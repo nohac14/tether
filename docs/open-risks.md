@@ -1,7 +1,7 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-10-09  
+**Last reviewed:** 2026-10-12
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
@@ -40,6 +40,7 @@ must not be converted into an undocumented workaround.
 | R-015 | Release blocker | Open | Actual hardware, signed identities, and clean OS installations may not be available for every intended target. | Create a test inventory before release work. A missing configuration is either acquired/tested or removed from the support claim; CI/cross-compilation never substitutes for evidence. | A-004, IT-006, RL-002 |
 | R-016 | Release blocker | Open | Malformed/flooded clients can exhaust parser, connection, session, dispatcher, or OS input queues and could starve release work. | Fuzz/load tests demonstrate bounded memory, CPU, connections, messages, and queued bytes. Saturation clears discardable motion, executes priority release, closes the session, and leaves the mock/native backend neutral. | PR-004, NW-007, IT-002, IT-004 |
 | R-017 | Tracked | Open | Browsers may purge persistent cookies or segregate storage for bookmarks/home-screen modes, causing apparent credential loss. | Test normal tabs, bookmarks, private modes as applicable, and supported home-screen conveniences. Loss returns to an understandable re-pair flow and never exposes the credential to JavaScript. | PA-001–PA-003, IT-005 |
+| R-018 | Release blocker | Open | Rust standard filesystem APIs provide the required lifetime locking and replacement primitives on current Windows, but do not expose explicit owner DACL construction or complete reparse/hard-link inspection. ST-002 and ST-003 therefore fail closed on Windows rather than accepting inherited ACLs as compliant. | Select and security-review a maintained safe Windows ACL/reparse implementation or approve a narrowly isolated audited Windows FFI boundary; cross-compile it and validate owner/System/Administrators access, broad-inheritance removal, reparse/hard-link attacks, lock contention, settings/identity replacement, power-loss recovery, reset, and upgrade behavior on actual Windows 11 before enabling persistent state. | ST-002/ST-003 Windows follow-up, IT-004, PK-001 |
 
 ## Required evidence format
 

@@ -210,7 +210,7 @@ pub struct PhysicalKey(u8);
 
 impl PhysicalKey {
     /// USB HID usage page for all values represented by this type.
-    pub const USAGE_PAGE: u16 = 0x07;
+    pub const USAGE_PAGE: u16 = crate::HID_KEYBOARD_USAGE_PAGE;
 
     /// Constructs a physical key from a Keyboard/Keypad usage identifier.
     ///
@@ -223,11 +223,15 @@ impl PhysicalKey {
     /// unsupported usage.
     pub fn new(usage: u16) -> Result<Self, ValueError> {
         let usage = u8::try_from(usage).map_err(|_| ValueError::InvalidPhysicalKey)?;
-        if matches!(usage, 0x04..=0x65 | 0x67..=0xA4 | 0xB0..=0xDD | 0xE0..=0xE7) {
+        if crate::is_allowlisted_keyboard_usage(u16::from(usage)) {
             Ok(Self(usage))
         } else {
             Err(ValueError::InvalidPhysicalKey)
         }
+    }
+
+    pub(crate) const fn from_allowlisted_usage(usage: u8) -> Self {
+        Self(usage)
     }
 
     /// Returns the USB HID usage for native translation only.

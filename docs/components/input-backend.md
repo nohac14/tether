@@ -210,6 +210,11 @@ neutrality failure.
 Each implementation documents native error mapping, execution-thread
 requirements, capability refresh, and the exact hardware/manual tests it passed.
 
+Canonical HID ranges, conventional logical-command chord plans, last-moment
+capability preflight, and the inert shared suite are defined in
+[`backend-conformance.md`](backend-conformance.md). A mapping plan does not make
+a capability available; each backend advertises only its validated subset.
+
 ## Mock backend and required tests
 
 `MockInputBackend` records semantic operation classes and deterministic safe
@@ -221,3 +226,5 @@ IC-002 tests domain bounds, fixed-point types, redacted `Debug`, capability
 defaults, status revisions, and mock error injection. IC-003 model/race tests
 cover ordering, barriers, coalescing, saturation, cancellation, duplicate state,
 every release trigger, partial native failure, and final neutral state.
+NB-001 additionally requires every native mapper to pass the shared inert
+conformance suite before its guarded native validation can establish support.

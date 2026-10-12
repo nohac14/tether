@@ -1,4 +1,7 @@
-use crate::{InputAction, LogicalCommand, MediaCommand, MouseButton, OperationClass};
+use crate::{
+    ButtonAction, InputAction, LogicalCommand, MediaCommand, MouseButton, OperationClass,
+    ScrollAxis,
+};
 use std::collections::BTreeSet;
 use std::fmt;
 
@@ -76,6 +79,44 @@ impl BackendCapabilities {
             media_commands: BTreeSet::new(),
         }
     }
+
+    /// Returns whether no input capability is currently advertised.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        !self.relative_pointer.is_available()
+            && self.mouse_buttons.is_empty()
+            && !self.atomic_click.is_available()
+            && !self.vertical_scroll.is_available()
+            && !self.horizontal_scroll.is_available()
+            && !self.physical_keys.is_available()
+            && self.text_modes.is_empty()
+            && self.logical_commands.is_empty()
+            && self.media_commands.is_empty()
+    }
+
+    /// Returns whether this snapshot advertises the action's capability.
+    #[must_use]
+    pub fn supports(&self, action: &InputAction) -> bool {
+        match action {
+            InputAction::PointerMove(_) => self.relative_pointer.is_available(),
+            InputAction::Scroll(delta) => match delta.axis() {
+                ScrollAxis::Horizontal => self.horizontal_scroll.is_available(),
+                ScrollAxis::Vertical => self.vertical_scroll.is_available(),
+            },
+            InputAction::MouseButton(ButtonAction::Down(button) | ButtonAction::Up(button)) => {
+                self.mouse_buttons.contains(button)
+            }
+            InputAction::MouseButton(ButtonAction::Click { button, .. }) => {
+                self.atomic_click.is_available() && self.mouse_buttons.contains(button)
+            }
+            InputAction::PhysicalKey(_) | InputAction::TextEdit(_) => {
+                self.physical_keys.is_available()
+            }
+            InputAction::TextInsert(_) => !self.text_modes.is_empty(),
+            InputAction::LogicalCommand(command) => self.logical_commands.contains(command),
+            InputAction::MediaCommand(command) => self.media_commands.contains(command),
+        }
+    }
 }
 
 impl Default for BackendCapabilities {
@@ -110,7 +151,55 @@ impl BackendStatus {
             fault: None,
         }
     }
+
+    /// Validates current availability and the action-specific capability.
+    ///
+    /// This is a last-moment preflight, not a replacement for native checks in
+    /// the backend. It carries no action payload into its error.
+    ///
+    /// # Errors
+    ///
+    /// Returns a safe availability category when the backend, permission, or
+    /// action-specific capability is unavailable.
+    pub fn validate_action(&self, action: &InputAction) -> Result<(), CapabilityRejection> {
+        if !self.initialized || self.fault.is_some() {
+            return Err(CapabilityRejection::BackendUnavailable);
+        }
+        if !matches!(
+            self.permission,
+            PermissionState::NotRequired | PermissionState::Granted
+        ) {
+            return Err(CapabilityRejection::PermissionUnavailable);
+        }
+        if !self.available {
+            return Err(CapabilityRejection::BackendUnavailable);
+        }
+        if !self.capabilities.supports(action) {
+            return Err(CapabilityRejection::CapabilityUnavailable);
+        }
+        Ok(())
+    }
 }
+
+/// Safe reason an action was rejected before native backend execution.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CapabilityRejection {
+    BackendUnavailable,
+    PermissionUnavailable,
+    CapabilityUnavailable,
+}
+
+impl fmt::Display for CapabilityRejection {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::BackendUnavailable => "input backend is unavailable",
+            Self::PermissionUnavailable => "input permission is unavailable",
+            Self::CapabilityUnavailable => "input capability is unavailable",
+        })
+    }
+}
+
+impl std::error::Error for CapabilityRejection {}
 
 /// Reason for a bounded native status refresh.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -248,6 +337,12 @@ impl ReleaseReport {
             neutral: true,
         }
     }
+
+    /// Returns true only for an internally consistent neutrality claim.
+    #[must_use]
+    pub fn is_confirmed_neutral(&self) -> bool {
+        self.neutral && self.failures.is_empty() && self.released == self.attempted
+    }
 }
 
 /// Serialized platform-native input boundary.
@@ -268,4 +363,43 @@ pub trait InputBackend: Send {
 
     /// Best-effort release of all native state held by this backend.
     fn release_all(&mut self) -> ReleaseReport;
+}
+
+/// Failure from last-moment capability validation or native execution.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CheckedExecutionError {
+    Capability(CapabilityRejection),
+    Backend(BackendError),
+}
+
+impl fmt::Display for CheckedExecutionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Capability(error) => error.fmt(formatter),
+            Self::Backend(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for CheckedExecutionError {}
+
+/// Rechecks cached authoritative capability state immediately before execution.
+///
+/// The status lookup is non-blocking by contract. A dynamic native loss can
+/// still occur afterward and remains the backend's responsibility.
+///
+/// # Errors
+///
+/// Returns a payload-free capability rejection or sanitized backend error.
+pub fn execute_checked(
+    backend: &mut dyn InputBackend,
+    action: &InputAction,
+) -> Result<(), CheckedExecutionError> {
+    backend
+        .status()
+        .validate_action(action)
+        .map_err(CheckedExecutionError::Capability)?;
+    backend
+        .execute(action)
+        .map_err(CheckedExecutionError::Backend)
 }

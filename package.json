@@ -15,8 +15,10 @@
     "check:links": "node tooling/check-links.mjs",
     "check:markdown": "markdownlint-cli2",
     "check:prettier": "prettier --check .",
+    "check:secrets": "node tooling/check-secrets.mjs",
     "check:types": "pnpm --recursive run typecheck",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:secrets": "node --test tooling/check-secrets.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.11.0",

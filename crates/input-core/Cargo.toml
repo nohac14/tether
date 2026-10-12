@@ -8,5 +8,8 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+backend-conformance = []
+
 [dev-dependencies]
 tether-test-support = { path = "../test-support" }
