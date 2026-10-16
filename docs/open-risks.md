@@ -1,7 +1,7 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-10-12
+**Last reviewed:** 2026-10-16
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
@@ -57,6 +57,22 @@ Each manual platform record must include:
 
 Never place pairing tokens, credentials, typed text, key streams, clipboard
 contents, cookie headers, raw control frames, or private user data in evidence.
+
+## 2026-10-16 Wave 8 evidence update
+
+The inert mapper milestone reduced implementation uncertainty without closing
+native risks. Windows x86-64, X11 Linux x86-64, and Wayland Linux x86-64 binding
+surfaces cross-compile with strict Clippy; macOS bindings compile natively and
+the non-prompting Accessibility preflight executed. All four mapper suites pass
+against inert sinks, including unsupported HID usages and cleanup/error paths.
+
+R-006 remains open because no Windows API call or runtime environment was used.
+R-007 remains open because no event posting, stable signing identity, permission
+lifecycle, or application/display matrix was tested. R-008 remains open because
+there was no X server or live XKB/XTEST observation. R-009 remains open because
+there was no GNOME/KDE portal/EI session and `reis` is still a provisional
+adapter. See `components/native-backend-spikes.md` and the dated milestone
+record for the exact evidence classification.
 
 ## Architectural questions remaining
 

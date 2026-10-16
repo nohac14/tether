@@ -1,6 +1,6 @@
 # Manual validation environment inventory
 
-**Inventory date:** 2026-10-09  
+**Inventory date:** 2026-10-16
 **Task:** A-004  
 **Status:** Complete as an availability inventory; no native-input, package, or
 real-device product validation has been performed.
@@ -23,6 +23,9 @@ not count as a passed manual test.
 | pnpm | Workspace runtime 11.25.0 | Available for initial dependency-free workspace validation |
 | Apple code-signing identities | 0 valid code-signing identities reported | Signed/notarized macOS permission and package tests are unavailable |
 | Android tooling | ADB 36.0.0 is installed | Device enumeration could not run inside the sandbox; an escalation request was denied, so no device presence or version was observed |
+| Rust cross-target components | `x86_64-pc-windows-msvc` and `x86_64-unknown-linux-gnu` standard libraries | Installed from the official Rust 1.99.0 channel on 2026-10-16 and used only for compile/Clippy checks; this is not a Windows or Linux runtime test |
+| Buf | Official temporary Buf 1.72.0 Darwin-arm64 binary | Release SHA-256 verified; format/lint/build ran. The binary was not installed or committed, and PR-002 remains blocked on its schema decision/baseline |
+| npm registry path | Bundled Node 24.19.0/pnpm 11.25.0 reached the official npm registry | Exact-package metadata query only; no dependency install, lock resolution, frontend build, or browser test ran |
 
 No typed input, credential, token, clipboard, device identifier, network address,
 or signing-identity name was collected for this inventory.

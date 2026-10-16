@@ -132,9 +132,12 @@ never recursively deletes an unresolved path.
 
 There is no multi-file transaction. Operations that affect multiple domains
 are ordered fail-closed by their owner. For example, a factory identity reset
-first stops input/listeners, commits an empty paired-device store, commits the
-new identity, then publishes the new state. A partial failure keeps services
-stopped until recovery reconciles the files.
+first stops admission and sessions, releases input, removes/invalidates the
+paired-device store, commits the new identity only after confirming that file
+is absent, and only then may recreate an empty store and publish the new state.
+A partial failure keeps services stopped until recovery reconciles the files.
+The complete coordinator contract is in
+[`pairing-lifecycle.md`](pairing-lifecycle.md).
 
 ## Permissions and path safety
 
@@ -227,7 +230,7 @@ The UI offers distinct scopes:
 | Preferences | Restore non-security UI/service preferences; preserve identity, approved interfaces, and paired devices unless separately selected. |
 | Network approvals | Clear selected/approved interfaces and auto-listen; preserve identity/devices but require manual listener approval. |
 | Paired devices | Atomically replace the device store with empty state and immediately revoke/close every session. |
-| Factory identity | Clear settings, approvals, devices, and identity; create a fresh identity only after prior credential state is invalidated. |
+| Factory identity | Clear settings, approvals, devices, and identity; remove/invalidate the paired-device file and create a fresh identity only after the coordinator preconditions in `pairing-lifecycle.md` hold. |
 
 Reset targets the exact known files and never recursively removes the
 application-data root. Logs/quarantine have separate bounded retention and

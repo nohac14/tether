@@ -23,9 +23,11 @@ the explicit ranges below:
 
 The ranges are one shared source for domain validation and conformance tests.
 Reserved, error, consumer-page, vendor-defined, and wider values fail before
-dispatch. A native backend maps each advertised usage explicitly or declines
-physical-key capability; it never guesses from a browser label, Unicode scalar,
-or keycap legend.
+dispatch. A native backend maps each advertised usage explicitly or returns a
+closed `Unsupported` result for that usage; it declines physical-key capability
+only when the keyboard interface itself is unavailable. A partial mapping must
+not hide the entire keyboard capability. It never guesses from a browser label,
+Unicode scalar, or keycap legend.
 
 The version-one list was established against HID Usage Tables 1.5 as specified
 by the protocol contract and rechecked on 2026-10-12 against the current
@@ -116,6 +118,15 @@ action checks, unsupported-action non-execution, held-state cleanup, and repeate
 release. Mapping boundary, exhaustiveness, reverse release order, and redacted
 chord diagnostics have unit coverage.
 
-No Windows, macOS, X11, or Wayland native mapper exists yet, and no native input
-or physical-device test was run for NB-001. Passing this shared suite is a
-prerequisite, not evidence of platform support.
+Wave 8 now also supplies a reusable inert mapper/sink wrapper with bounded held
+state, redacted partial-batch failure reporting, reverse cleanup, and an
+uncertain-native-state latch. The Windows, macOS, X11, and Wayland spike
+mappers pass the suite with partial HID tables: mapped values execute balanced
+transitions and unmapped allowlisted values return `Unsupported` before sink
+execution while general keyboard capability remains visible. Platform-specific
+tests cover partial sink failure and release behavior.
+
+These are inert event-plan tests. The exact compilation and unperformed native
+validation matrix is documented in
+[`native-backend-spikes.md`](native-backend-spikes.md); no live native input or
+physical-device validation is claimed.

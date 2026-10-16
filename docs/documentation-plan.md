@@ -47,6 +47,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 |---|---|---|
 | `docs/components/protocol.md` | Envelope and ordered action batches, version/subprotocol negotiation, JavaScript heartbeats, message semantics, HID IDs, enums, limits, sequencing, timestamps, compatibility and field reservation rules | `.proto` schema |
 | `docs/components/pairing.md` | QR fragment format, token state machine, approval/denial/expiry, credential hashing/cookie attributes, origin scoping, rename/revoke flows | `pairing` |
+| `docs/components/pairing-lifecycle.md` | Fail-closed session, credential-store, and identity reset/rotation coordination sequence | F-07 prerequisite; extend during `pairing` |
 | `docs/components/session-safety.md` | Auth states, standby/controller ownership, held-state ledger, heartbeat, transfer, reconnect, release-all truth table and fault injection | `session` |
 | `docs/components/network-server.md` | Routes, methods, listener model, Host/Origin canonicalization, peer admission, headers, timeouts, quotas, rate limits, cache policy, WebSocket backpressure | `network` |
 | `docs/components/discovery.md` | Installation ID/hostname, probing/conflicts, service/TXT schema, selected interfaces, address changes, goodbyes, fallback URLs | `discovery` |
