@@ -8,3 +8,12 @@ publish = false
 [lints]
 workspace = true
 
+[dependencies]
+tether-input-core = { path = "../input-core" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.13.13", default-features = false, features = ["remote_desktop", "screencast", "tokio"] }
+reis = { version = "0.7.1", default-features = false, features = ["tokio"] }
+
+[dev-dependencies]
+tether-input-core = { path = "../input-core", features = ["backend-conformance"] }

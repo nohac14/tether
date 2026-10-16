@@ -5,10 +5,11 @@
 //! normal `cargo test`; guarded workstation injection remains a separate gate.
 
 use crate::{
-    ALLOWLISTED_HID_USAGE_RANGES, BackendErrorCategory, BackendKind, ButtonAction,
-    CapabilityRejection, CheckedExecutionError, ClickCount, InputAction, InputBackend, KeyAction,
-    LOGICAL_COMMANDS, MediaCommand, MouseButton, OperationClass, PhysicalKey, PointerDelta,
-    ReleaseReport, ScrollAxis, ScrollDelta, SensitiveText, TextEditCommand, execute_checked,
+    ALLOWLISTED_HID_USAGE_RANGES, BackendError, BackendErrorCategory, BackendKind, BackendStatus,
+    ButtonAction, CapabilityRejection, CheckedExecutionError, ClickCount, InputAction,
+    InputBackend, KeyAction, LOGICAL_COMMANDS, MediaCommand, MouseButton, OperationClass,
+    PhysicalKey, PointerDelta, ReleaseFailure, ReleaseReport, RetryScope, ScrollAxis, ScrollDelta,
+    SensitiveText, StatusRefreshReason, TextEditCommand, execute_checked,
 };
 use std::fmt;
 
@@ -74,6 +75,262 @@ impl fmt::Display for BackendConformanceFailure {
 }
 
 impl std::error::Error for BackendConformanceFailure {}
+
+/// Platform mapper exercised by the inert backend conformance harness.
+///
+/// Implementations are the same pure translation and capability logic a live
+/// backend will use. They must not call native injection APIs from these
+/// methods. A platform crate supplies a separate inert sink for standard tests.
+pub trait InertConformanceMapper: Send {
+    type Event: Send;
+
+    fn status(&self) -> BackendStatus;
+    fn refresh_status(&mut self, reason: StatusRefreshReason) -> BackendStatus;
+    /// Translates one platform-neutral action into inert native events.
+    ///
+    /// # Errors
+    ///
+    /// Returns a redacted backend error when the action is unavailable or
+    /// cannot be represented safely by this mapper.
+    fn map(&mut self, action: &InputAction) -> Result<Vec<Self::Event>, BackendError>;
+
+    /// Clears mapper-local transient state such as fractional scroll residue.
+    ///
+    /// Held native buttons and keys are released individually by the harness.
+    ///
+    /// # Errors
+    ///
+    /// Returns a safe release category when local mapper state cannot be
+    /// returned to neutral.
+    fn reset_local_state(&mut self) -> Result<(), ReleaseFailure> {
+        Ok(())
+    }
+}
+
+/// Sanitized failure from an inert or live-event sink adapter.
+///
+/// `accepted` is the number of leading events whose native state may have
+/// changed. It contains no input identity or payload.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InertSinkError {
+    accepted: usize,
+}
+
+impl InertSinkError {
+    #[must_use]
+    pub const fn new(accepted: usize) -> Self {
+        Self { accepted }
+    }
+
+    #[must_use]
+    pub const fn accepted(self) -> usize {
+        self.accepted
+    }
+}
+
+/// Event target used by the conformance backend.
+pub trait InertConformanceSink<E>: Send {
+    /// Accepts one already-translated event batch without native injection.
+    ///
+    /// # Errors
+    ///
+    /// Reports how many leading events may have been accepted when the batch
+    /// cannot be completed.
+    fn emit(&mut self, events: &[E]) -> Result<(), InertSinkError>;
+}
+
+/// Reusable `InputBackend` wrapper for exercising a platform mapper inertly.
+///
+/// The wrapper owns the backend-side held-state mirror required by the shared
+/// contract. It is intentionally available only with `backend-conformance` (or
+/// while testing `input-core`) and is not a native injector.
+pub struct InertConformanceBackend<M, S>
+where
+    M: InertConformanceMapper,
+    S: InertConformanceSink<M::Event>,
+{
+    mapper: M,
+    sink: S,
+    held_buttons: Vec<MouseButton>,
+    held_keys: Vec<PhysicalKey>,
+    uncertain_native_state: bool,
+}
+
+impl<M, S> InertConformanceBackend<M, S>
+where
+    M: InertConformanceMapper,
+    S: InertConformanceSink<M::Event>,
+{
+    #[must_use]
+    pub const fn new(mapper: M, sink: S) -> Self {
+        Self {
+            mapper,
+            sink,
+            held_buttons: Vec::new(),
+            held_keys: Vec::new(),
+            uncertain_native_state: false,
+        }
+    }
+
+    #[must_use]
+    pub const fn mapper(&self) -> &M {
+        &self.mapper
+    }
+
+    #[must_use]
+    pub const fn sink(&self) -> &S {
+        &self.sink
+    }
+
+    #[must_use]
+    pub const fn sink_mut(&mut self) -> &mut S {
+        &mut self.sink
+    }
+
+    #[must_use]
+    pub fn held_counts(&self) -> (usize, usize) {
+        (self.held_buttons.len(), self.held_keys.len())
+    }
+
+    #[must_use]
+    pub const fn has_uncertain_native_state(&self) -> bool {
+        self.uncertain_native_state
+    }
+
+    fn emit_action(&mut self, action: &InputAction) -> Result<(), BackendError> {
+        let events = self.mapper.map(action)?;
+        match self.sink.emit(&events) {
+            Ok(()) => {
+                self.apply_held_transition(action);
+                Ok(())
+            }
+            Err(error) => {
+                let category = if error.accepted() == 0 {
+                    BackendErrorCategory::NativeCallFailed
+                } else if error.accepted() <= events.len() {
+                    self.uncertain_native_state = true;
+                    BackendErrorCategory::PartialStateChange
+                } else {
+                    self.uncertain_native_state = true;
+                    BackendErrorCategory::Fatal
+                };
+                Err(BackendError::new(
+                    category,
+                    action.class(),
+                    RetryScope::AfterSessionRestart,
+                ))
+            }
+        }
+    }
+
+    fn apply_held_transition(&mut self, action: &InputAction) {
+        match action {
+            InputAction::MouseButton(ButtonAction::Down(button)) => {
+                if !self.held_buttons.contains(button) {
+                    self.held_buttons.push(*button);
+                }
+            }
+            InputAction::MouseButton(ButtonAction::Up(button)) => {
+                self.held_buttons.retain(|held| held != button);
+            }
+            InputAction::PhysicalKey(KeyAction::Down(key)) => {
+                if !self.held_keys.contains(key) {
+                    self.held_keys.push(*key);
+                }
+            }
+            InputAction::PhysicalKey(KeyAction::Up(key)) => {
+                self.held_keys.retain(|held| held != key);
+            }
+            _ => {}
+        }
+    }
+
+    fn try_release_action(&mut self, action: &InputAction) -> bool {
+        let Ok(events) = self.mapper.map(action) else {
+            return false;
+        };
+        match self.sink.emit(&events) {
+            Ok(()) => {
+                self.apply_held_transition(action);
+                true
+            }
+            Err(error) => {
+                self.uncertain_native_state |= error.accepted() > 0;
+                false
+            }
+        }
+    }
+}
+
+impl<M, S> InputBackend for InertConformanceBackend<M, S>
+where
+    M: InertConformanceMapper,
+    S: InertConformanceSink<M::Event>,
+{
+    fn status(&self) -> BackendStatus {
+        self.mapper.status()
+    }
+
+    fn refresh_status(&mut self, reason: StatusRefreshReason) -> BackendStatus {
+        self.mapper.refresh_status(reason)
+    }
+
+    fn execute(&mut self, action: &InputAction) -> Result<(), BackendError> {
+        self.emit_action(action)
+    }
+
+    fn release_all(&mut self) -> ReleaseReport {
+        let attempted = self.held_buttons.len().saturating_add(self.held_keys.len());
+        let mut released = 0_usize;
+        let mut failures = Vec::new();
+
+        for button in self.held_buttons.clone().into_iter().rev() {
+            let action = InputAction::MouseButton(ButtonAction::Up(button));
+            if self.try_release_action(&action) {
+                released = released.saturating_add(1);
+            } else {
+                failures.push(ReleaseFailure::MouseButton);
+            }
+        }
+        let keys = self.held_keys.clone();
+        for key in keys
+            .iter()
+            .rev()
+            .filter(|key| !key.is_modifier())
+            .chain(keys.iter().rev().filter(|key| key.is_modifier()))
+            .copied()
+        {
+            let failure = if key.is_modifier() {
+                ReleaseFailure::ModifierKey
+            } else {
+                ReleaseFailure::NonModifierKey
+            };
+            let action = InputAction::PhysicalKey(KeyAction::Up(key));
+            if self.try_release_action(&action) {
+                released = released.saturating_add(1);
+            } else {
+                failures.push(failure);
+            }
+        }
+        if let Err(failure) = self.mapper.reset_local_state() {
+            failures.push(failure);
+        }
+        if self.uncertain_native_state && !failures.contains(&ReleaseFailure::BackendLocalState) {
+            failures.push(ReleaseFailure::BackendLocalState);
+        }
+
+        let neutral = self.held_buttons.is_empty()
+            && self.held_keys.is_empty()
+            && !self.uncertain_native_state
+            && failures.is_empty();
+        ReleaseReport {
+            attempted: u32::try_from(attempted).unwrap_or(u32::MAX),
+            released: u32::try_from(released).unwrap_or(u32::MAX),
+            failures,
+            neutral,
+        }
+    }
+}
 
 /// Exercises canonical mappings, capability gating, and idempotent release.
 ///

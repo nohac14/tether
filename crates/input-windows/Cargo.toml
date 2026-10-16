@@ -8,3 +8,11 @@ publish = false
 [lints]
 workspace = true
 
+[dependencies]
+tether-input-core = { path = "../input-core" }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", default-features = false, features = ["std", "Win32_UI_Input_KeyboardAndMouse"] }
+
+[dev-dependencies]
+tether-input-core = { path = "../input-core", features = ["backend-conformance"] }

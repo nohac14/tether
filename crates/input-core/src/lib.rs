@@ -24,7 +24,8 @@ pub use backend::{
 };
 #[cfg(any(test, feature = "backend-conformance"))]
 pub use conformance::{
-    BackendConformanceFailure, BackendConformanceReport, run_backend_conformance,
+    BackendConformanceFailure, BackendConformanceReport, InertConformanceBackend,
+    InertConformanceMapper, InertConformanceSink, InertSinkError, run_backend_conformance,
 };
 pub use dispatcher::{
     AdmissionError, CancellationReason, DEFAULT_QUEUE_CAPACITY, DispatchOutcome, DispatchPosition,
