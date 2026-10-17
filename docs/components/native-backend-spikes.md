@@ -107,7 +107,7 @@ until independent review and named GNOME/KDE evidence are available.
 ## Evidence classification
 
 | Backend | Mapper/inert tests | Binding compile | Native probe | Live injection | Physical target validation |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Windows | Passed on macOS host | Passed, Windows x86_64 cross-target | Not run | Not run | Not run |
 | macOS | Passed on macOS arm64 | Passed natively | Accessibility preflight only | Not run | Not run |
 | X11 | Passed on macOS host | Passed, Linux x86_64 cross-target | Not run | Not run | Not run |

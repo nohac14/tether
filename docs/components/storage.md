@@ -16,7 +16,7 @@ directory, executable directory, a shared system directory, or cloud-synced
 documents:
 
 | Platform | Root |
-|---|---|
+| --- | --- |
 | Windows | Current user's `FOLDERID_LocalAppData` followed by `Tether` |
 | macOS | Current user's `Library/Application Support/Tether` |
 | Linux | `$XDG_DATA_HOME/tether`, or `$HOME/.local/share/tether` only when `XDG_DATA_HOME` is unset/empty |
@@ -66,7 +66,7 @@ invalid Unicode, excessive nesting, and trailing data are rejected.
 Every read is bounded before allocation. Version 1 ceilings are:
 
 | File | Encoded ceiling |
-|---|---:|
+| --- | ---: |
 | `settings.json` | 256 KiB |
 | `identity.json` | 16 KiB |
 | `paired-devices.json` | 1 MiB |
@@ -226,7 +226,7 @@ discovery.
 The UI offers distinct scopes:
 
 | Scope | Effect |
-|---|---|
+| --- | --- |
 | Preferences | Restore non-security UI/service preferences; preserve identity, approved interfaces, and paired devices unless separately selected. |
 | Network approvals | Clear selected/approved interfaces and auto-listen; preserve identity/devices but require manual listener approval. |
 | Paired devices | Atomically replace the device store with empty state and immediately revoke/close every session. |

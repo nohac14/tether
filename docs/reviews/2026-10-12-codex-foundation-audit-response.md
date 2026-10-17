@@ -9,7 +9,7 @@
 ## Disposition
 
 | Finding | Disposition | Result |
-|---|---|---|
+| --- | --- | --- |
 | F-01 | Accepted and fixed | Every already-open validated regular file now receives permission changes through its descriptor. The process lock, bounded data reads, temporary files, and quarantined files validate path/inode/link state before and after descriptor permission tightening. A Unix path-swap regression proves the opened inode changes to `0600`, a replacement at the old path remains unchanged, and the mismatch is rejected. Directory modes remain path-based because no validated file descriptor exists at those call sites. Atomic same-directory destination replacement is also path-based; symlink and hard-link checks remain fail-closed. |
 | F-02 | Accepted and documented | The local scanner's generic assignment rule ignores values shorter than 16 characters and scans only the current tracked/non-ignored worktree. It does not inspect Git history, deleted blobs, or other refs. F-005 now explicitly requires pinned, redacting, history-aware CI scanning of reachable history. |
 | F-03 | Tracked blocker, unchanged | Windows settings and identity persistence still fail closed with `PlatformPermissionEnforcementUnavailable`. No inherited-ACL fallback was added. R-018 remains open and release-blocking. |
@@ -88,7 +88,7 @@ When F-002 completes, F-005 must include both accepted audit conditions:
 Executed on macOS arm64 with Rust/Cargo 1.99.0:
 
 | Command | Result |
-|---|---|
+| --- | --- |
 | `cargo fmt --all --check` | Passed |
 | `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings` | Passed, zero warnings |
 | `cargo test --workspace --all-targets --all-features --locked` | Passed, 94 tests (28 config, 49 input-core, 7 test-support, 10 xtask) |

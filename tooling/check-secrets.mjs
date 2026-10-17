@@ -2,6 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const MAX_SCANNED_FILE_BYTES = 1024 * 1024;
 const BINARY_EXTENSIONS = new Set([
@@ -79,13 +80,27 @@ function extension(path) {
   return dot === -1 ? "" : base.slice(dot);
 }
 
-function repositoryFiles() {
+export function repositoryFiles(rootDirectory = process.cwd()) {
+  const options = {
+    cwd: rootDirectory,
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+    timeout: 10_000,
+  };
   const output = execFileSync(
     "git",
     ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-    { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 },
+    options,
   );
-  return output.split("\0").filter(Boolean).sort();
+  // A tracked deletion has no worktree contents to scan. Exclude only paths
+  // explicitly reported deleted by Git; any other read failure remains fatal.
+  // History/deleted-blob inspection belongs to the separate CI history scan.
+  const deleted = new Set(
+    execFileSync("git", ["ls-files", "-z", "--deleted"], options).split("\0"),
+  );
+  return [...new Set(output.split("\0"))]
+    .filter((path) => path !== "" && !deleted.has(path))
+    .sort();
 }
 
 export function scanRepository(paths = repositoryFiles()) {
@@ -131,4 +146,4 @@ function main() {
   );
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

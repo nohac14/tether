@@ -1,3 +1,5 @@
+# Tether Independent Implementation Review: Task IC-003
+
 Ran command: List review and component files (`ls -la docs/reviews docs/components crates/input-core/src`)
 Ran command: Run cargo fmt, clippy, and test (`export PATH="/Users/jl/.cargo/bin:$PATH" && cargo fmt --all --check && cargo clippy --all-targets --workspace -- -D warnings && cargo test --all-targets --workspace`)
 Viewed 2026-10-10-gemini-baseline-audit-response.md:1-92
@@ -16,8 +18,6 @@ Viewed dispatcher.rs:1351-1687
 Ran command: Check local links tool (`node tooling/check-links.mjs`)
 Ran command: Check git diff whitespace (`git diff --check`)
 
-# Tether Independent Implementation Review: Task IC-003
-
 **Review Target:** Implementation of Task `IC-003` (*Bounded serialized input dispatcher*)
 **Review Date:** 2026-10-10
 **Baseline Reference:** [`docs/reviews/2026-10-09-gemini-baseline-audit.md`](file:///Users/jl/tether/docs/reviews/2026-10-09-gemini-baseline-audit.md) & [`docs/reviews/2026-10-10-gemini-baseline-audit-response.md`](file:///Users/jl/tether/docs/reviews/2026-10-10-gemini-baseline-audit-response.md)
@@ -30,6 +30,7 @@ Ran command: Check git diff whitespace (`git diff --check`)
 ### Review Decision: **CONDITIONAL GO**
 
 Task `IC-003` has delivered a high-quality, production-grade serialized input dispatcher in [`crates/input-core/src/dispatcher.rs`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs) accompanied by an accepted component specification in [`docs/components/input-dispatcher.md`](file:///Users/jl/tether/docs/components/input-dispatcher.md). The implementation satisfies the vast majority of architectural requirements:
+
 - Exclusive backend ownership on a single dedicated OS thread (`tether-input-dispatch`).
 - A separate, priority-escalating 1-slot emergency release mailbox that cannot be starved by a saturated logical queue.
 - Strict $O(1)$ memory bound on emergency releases and bounded logical action queues.
@@ -47,7 +48,7 @@ Codex must resolve **Finding D-01** (Fault Mode Overwrite): A dispatcher that ha
 The following checks were independently executed in the repository:
 
 | Verification Target | Command Executed | Result | Details |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Workspace Formatting | `cargo fmt --all --check` | **PASSED** | Code formatting is compliant across all workspace crates. |
 | Strict Workspace Clippy | `cargo clippy --all-targets --workspace -- -D warnings` | **PASSED** | Zero warnings under `-D warnings`, `unsafe_code = "deny"`, `all = "deny"`, `pedantic = "deny"`. |
 | Workspace Test Suite | `cargo test --all-targets --workspace` | **PASSED** | **45 unit tests passed, 0 failed** (28 in `input-core`, 7 in `test-support`, 10 in `xtask`). |
@@ -59,6 +60,7 @@ The following checks were independently executed in the repository:
 ## 3. Evaluation of Key Areas
 
 ### 1. Emergency Release Under Normal Queue Saturation & Exclusive Backend Ownership
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - The ordinary queue ([`state.queue`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L414)) and the emergency release mailbox ([`state.emergency`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L418)) are completely segregated.
@@ -67,6 +69,7 @@ The following checks were independently executed in the repository:
   - Backend execution is strictly serialized on the worker thread: [`backend.release_all()`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L749) is called exclusively by the worker. Callers never touch the backend directly; they wait on a shared [`ReleaseSlot`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L282-L292) via [`ReleaseTicket`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L295-L355).
 
 ### 2. Ordering of Keys, Modifiers, Mouse Buttons, Barriers, and Releases
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - [`HeldLedger`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L962-L1047) stores pressed buttons and keys in explicit insertion order (`Vec<MouseButton>`, `Vec<PhysicalKey>`).
@@ -78,6 +81,7 @@ The following checks were independently executed in the repository:
   - The dispatcher does not synthesize synthetic native `Up` calls during cleanup; it delegates native cleanup to `backend.release_all()`, clearing its own ledger only when [`report.is_confirmed_neutral()`](file:///Users/jl/tether/crates/input-core/src/backend.rs#L252-L256) is true.
 
 ### 3. Coalescing Under Overflow, Opposite Signs, and State Changes
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - [`try_coalesce`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L685-L717) uses $i64$ widened arithmetic:
@@ -88,6 +92,7 @@ The following checks were independently executed in the repository:
   - State changes act as impermeable barriers: any action other than identical adjacent motion/scroll returns `false` in `try_coalesce`, preventing coalescing across button clicks, key presses, commands, or text insertion.
 
 ### 4. Race Conditions, Worker Panics, and Mutex Poisoning
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - All mutex acquisitions use [`lock_recover`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L617-L619) (`.lock().unwrap_or_else(PoisonError::into_inner)`), ensuring worker and caller threads recover from thread panics without hanging.
@@ -96,6 +101,7 @@ The following checks were independently executed in the repository:
   - Dropping an admitted action's [`DispatchReceipt`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L226-L271) drops the internal receiver. When the worker completes execution, `completion.sender.send(...)` error is safely ignored (`let _receiver_may_be_gone = ...`), ensuring accepted work executes to completion.
 
 ### 5. Receipt & Outcome Categorization
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - [`DispatchOutcome`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L151-L169) explicitly separates:
@@ -106,6 +112,7 @@ The following checks were independently executed in the repository:
   - Receipts never expose typed text, key codes, button names, or motion coordinates in `Debug` or `Display`.
 
 ### 6. Resource Bounds Under Sustained Load
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - Logical action count is strictly tracked: `state.queued_actions += 1` increments for every admitted action, even when coalesced into an existing `QueueEntry`. Coalescing cannot create an unbounded completion list.
@@ -113,6 +120,7 @@ The following checks were independently executed in the repository:
   - Position counter exhaustion at $2^{64}-2$ reserves $2^{64}-1$ exclusively for the final emergency release barrier and closes ordinary admission.
 
 ### 7. Test Suite Depth & Failure Coverage
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - 18 targeted unit tests in `dispatcher::tests` test:
@@ -127,6 +135,7 @@ The following checks were independently executed in the repository:
     - Inconsistent neutrality reports (`neutral: true` with non-zero failures or mismatched counts).
 
 ### 8. Architectural Alignment & Compatibility with IC-004
+
 - **Status:** **Verified Compliant.**
 - **Analysis:**
   - `InputDispatcher` consumes platform-neutral [`InputAction`](file:///Users/jl/tether/crates/input-core/src/action.rs#L361-L373) and delegates to any `B: InputBackend + 'static`.
@@ -140,6 +149,7 @@ The following checks were independently executed in the repository:
 ### A. Confirmed Defects
 
 #### Finding D-01: Dispatcher Can Illegitimately Clear `Faulted` Mode Via Ordinary Release
+
 - **Severity:** Medium
 - **Location:** [`crates/input-core/src/dispatcher.rs:881-887`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L881-L887) and [`crates/input-core/src/dispatcher.rs:116-133`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L116-L133)
 - **Evidence & Concrete Failure Scenario:**
@@ -149,6 +159,7 @@ The following checks were independently executed in the repository:
   4. `begin_emergency_locked` overwrites `state.mode = DispatcherMode::Releasing` and enqueues a `PendingEmergency` with `reason = EmergencyReason::ExplicitStop`.
   5. The backend executes `release_all()`, which returns `ReleaseReport::neutral()`.
   6. In `complete_release`, lines 884–887 evaluate:
+
      ```rust
      state.mode = if release_panicked {
          DispatcherMode::Faulted
@@ -158,12 +169,14 @@ The following checks were independently executed in the repository:
              .mode_after_release(outcome.report.is_confirmed_neutral())
      };
      ```
+
   7. For `EmergencyReason::ExplicitStop` with confirmed neutrality, `mode_after_release(true)` evaluates to `DispatcherMode::Suspended`.
   8. `state.mode` is set to `DispatcherMode::Suspended`, forgetting that the dispatcher was previously `Faulted`.
   9. The caller now calls `dispatcher.resume()`, which succeeds because `state.mode == DispatcherMode::Suspended`, restoring `state.mode = DispatcherMode::Running`.
   10. **Impact:** A dispatcher that experienced queue saturation or an invalid transition resumes admitting input, directly violating the contract in [`docs/components/input-dispatcher.md:57-59`](file:///Users/jl/tether/docs/components/input-dispatcher.md#L57-L59) (*"Saturation, an impossible transition, backend fault, backend panic, an internally inconsistent release report, or uncertain neutrality ends in `Faulted`; constructing a reviewed replacement is required"*).
 - **Proposed Correction:**
   In `complete_release`, ensure that if the dispatcher was already in `DispatcherMode::Faulted` prior to the release operation, its post-release mode remains `DispatcherMode::Faulted` (unless `pending.reason == EmergencyReason::Shutdown`, which transitions to `DispatcherMode::Stopped`).
+
   ```rust
   // Example correction in complete_release:
   let prior_mode = state.mode;
@@ -175,6 +188,7 @@ The following checks were independently executed in the repository:
           .mode_after_release(outcome.report.is_confirmed_neutral())
   };
   ```
+
 - **Blocks IC-004:** **No.** `IC-004` implements normalization and accumulators, which do not depend on dispatcher recovery modes. This correction can be applied before or during `SS-001`/`SS-002`.
 
 ---
@@ -182,10 +196,12 @@ The following checks were independently executed in the repository:
 ### B. Architectural Concerns & Edge Observations
 
 #### Concern C-01: `HeldLedger` Does Not Validate Atomic Click During Held Button State
+
 - **Severity:** Low
 - **Location:** [`crates/input-core/src/dispatcher.rs:970-1000`](file:///Users/jl/tether/crates/input-core/src/dispatcher.rs#L970-L1000)
 - **Evidence & Failure Scenario:**
   In `HeldLedger::validate`:
+
   ```rust
   match action {
       InputAction::MouseButton(ButtonAction::Down(button)) => ...
@@ -195,6 +211,7 @@ The following checks were independently executed in the repository:
       _ => Ok(()),
   }
   ```
+
   If mouse button `Left` is currently held down (`buttons.contains(&MouseButton::Left)`), an incoming action of `InputAction::MouseButton(ButtonAction::Click { button: MouseButton::Left, count: ClickCount::Single })` falls into `_ => Ok(())`. If executed, native injection on Windows/macOS would issue a down/up sequence while the button was already considered held down, potentially corrupting drag state.
 - **Proposed Correction:**
   In `HeldLedger::validate`, reject `ButtonAction::Click { button, .. }` if `self.buttons.contains(button)` with `RejectionReason::DuplicateDown` or a dedicated `RejectionReason::ButtonAlreadyHeld`.

@@ -102,7 +102,7 @@ mock state. Documentation is honest about the residual OS limit.
 ## Accepted refinements from the independent review
 
 | Finding | Accepted requirement | Specification location |
-|---|---|---|
+| --- | --- | --- |
 | Screen awake | Configurable feature; native Screen Wake Lock only in an eligible secure context; any video fallback is explicit, battery-aware, browser-tested, and best-effort. | §§6.6, 18.6, 41–42 |
 | Edge gestures | Inset the vertical scroll target from physical viewport edges using safe-area data and tested interior gutter placement. | §§6.2–6.3, 33–34 |
 | Ordered input | All input uses one ordered client pipeline and serialized server dispatcher; flush pending motion/scroll before state changes. | §§11.2–11.3, 15, 21 |

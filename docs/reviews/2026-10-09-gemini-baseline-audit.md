@@ -1,3 +1,5 @@
+# Tether Baseline Implementation Audit Report
+
 Ran command: Git status check (`git status`)
 Ran command: List workspace directory (`ls -la`)
 Ran command: List docs directory (`ls -la docs`)
@@ -89,8 +91,6 @@ Viewed check-links.test.mjs:1-61
 Ran command: Check corepack availability (`which corepack`)
 Ran command: Check git repo in parent (`ls -la .. | grep -E "\.git" || true`)
 
-# Tether Baseline Implementation Audit Report
-
 **Audit Target:** Repository baseline prior to Task `IC-003`  
 **Audit Date:** 2026-10-09  
 **Auditor:** Antigravity (Independent Architecture & Implementation Audit)  
@@ -105,6 +105,7 @@ Ran command: Check git repo in parent (`ls -la .. | grep -E "\.git" || true`)
 Task `IC-003` (*Bounded serialized input dispatcher*) is technically ready to begin because its direct dependency `IC-002` is complete, and `crates/input-core` is isolated from the blocked npm dependencies (`F-002`) and Protobuf generator (`PR-002`).
 
 However, the decision is **CONDITIONAL** upon Codex resolving four concrete constraints:
+
 1. **Mock Observability Gap in `crates/input-core/src/mock.rs`:** `MockInputBackend` does not record `release_all` invocations in its call log, does not maintain a release call counter, and does not simulate latency on release. If no keys or buttons are held, calling `release_all()` leaves the mock in an identical observable state. IC-003 tests verifying saturation shutdown, emergency stop, or cancellation when queues contain only motion/scroll cannot assert that `release_all` was called without modifying `MockInputBackend`.
 2. **Dispatcher Ledger Order vs Backend Mirror:** `MockInputBackend` uses `BTreeSet<PhysicalKey>`, which loses press order. The dispatcher ledger implemented in `IC-003` must explicitly maintain FIFO press order (and reverse press order on release) in its own ledger regardless of the mock's set representation.
 3. **Continuous Verification Tooling:** `cargo xtask check` unconditionally executes `pnpm` checks and fails in the current uninstalled state. Verification during `IC-003` must use direct Cargo commands (`cargo fmt`, `cargo clippy`, `cargo test`, `cargo build`).
@@ -117,7 +118,7 @@ However, the decision is **CONDITIONAL** upon Codex resolving four concrete cons
 The following checks were **independently executed** in the audit environment. They are explicitly distinguished from claims recorded in task handoffs.
 
 | Check | Command Executed | Result | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Rust Toolchain Version | `cargo --version && rustc --version` | **PASSED** | `cargo 1.99.0 (5f94df478 2026-08-27)`, `rustc 1.99.0 (b940084d7 2026-09-28) aarch64-apple-darwin` |
 | Workspace Build Check | `cargo check --all-targets --workspace` | **PASSED** | All 14 crates and `xtask` checked in 0.58s with zero warnings or errors. |
 | Workspace Formatting | `cargo fmt --all --check` | **PASSED** | Code formatting is strictly compliant across all Rust crates. |
@@ -137,6 +138,7 @@ The following checks were **independently executed** in the audit environment. T
 ## 3. Evaluation of Completed Tasks
 
 ### F-001 — Pinned Workspaces, Skeletons, Toolchains, and Lockfiles
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - `Cargo.toml` specifies `resolver = "3"`, `edition = "2024"`, `rust-version = "1.99"`.
@@ -145,6 +147,7 @@ The following checks were **independently executed** in the audit environment. T
   - Skeletons across `apps/desktop/src-tauri` and all 13 crates in `crates/` compile without warnings.
 
 ### F-003 — Repository Task Automation (`xtask`)
+
 - **Status:** Compliant with Documented Blocker.
 - **Findings:**
   - `xtask` correctly locates workspace root and implements `check`, `codegen`, `fixtures`, `package-preflight`, `manual-test-guard`, and `help`.
@@ -152,18 +155,21 @@ The following checks were **independently executed** in the audit environment. T
   - Preflight checks 8 essential files: [`AGENTS.md`](file:///Users/jl/tether/AGENTS.md), [`Cargo.lock`](file:///Users/jl/tether/Cargo.lock), [`Cargo.toml`](file:///Users/jl/tether/Cargo.toml), [`SPEC.md`](file:///Users/jl/tether/SPEC.md), [`apps/desktop/src-tauri/Cargo.toml`](file:///Users/jl/tether/apps/desktop/src-tauri/Cargo.toml), [`package.json`](file:///Users/jl/tether/package.json), [`pnpm-lock.yaml`](file:///Users/jl/tether/pnpm-lock.yaml), and [`rust-toolchain.toml`](file:///Users/jl/tether/rust-toolchain.toml).
 
 ### F-006 — Test Support Crate (`tether-test-support`)
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - Dev-only crate providing [`FakeClock`](file:///Users/jl/tether/crates/test-support/src/lib.rs#L30-L59), [`SeededRandom`](file:///Users/jl/tether/crates/test-support/src/lib.rs#L61-L91) (`SplitMix64`), [`PrivateTempDir`](file:///Users/jl/tether/crates/test-support/src/lib.rs#L93-L165) (owner-only permissions `0700` on Unix), [`SanitizedTraceCapture`](file:///Users/jl/tether/crates/test-support/src/lib.rs#L217-L272) (bounded queue with dropped counter and poisoned lock recovery), and [`NoopOsHandle`](file:///Users/jl/tether/crates/test-support/src/lib.rs#L283-L321).
   - Used strictly as a `[dev-dependencies]` entry in [`crates/input-core/Cargo.toml`](file:///Users/jl/tether/crates/input-core/Cargo.toml#L11-L12). Zero production dependencies.
 
 ### PR-001 — Control Protocol Contract
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - Contract in [`docs/components/protocol.md`](file:///Users/jl/tether/docs/components/protocol.md) fixes transport binding, envelope directions, session epoch/sequence rules, canonical USB HID physical keys (`0x07`), closed mouse buttons, closed logical/media commands, redacted text boundaries, JavaScript heartbeats, and hard ceilings.
   - Local markdown link checks validated across 39 documentation files.
 
 ### IC-001 — Input Backend Contract
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - Defined in [`docs/components/input-backend.md`](file:///Users/jl/tether/docs/components/input-backend.md).
@@ -171,6 +177,7 @@ The following checks were **independently executed** in the audit environment. T
   - Idempotent release ordering specified (buttons $\to$ non-modifiers in reverse press order $\to$ modifiers in reverse press order $\to$ local state cancel).
 
 ### IC-002 — Domain Types, `InputBackend`, and `MockInputBackend`
+
 - **Status:** Compliant with Minor Omissions.
 - **Findings:**
   - Implemented in [`crates/input-core`](file:///Users/jl/tether/crates/input-core).
@@ -180,12 +187,14 @@ The following checks were **independently executed** in the audit environment. T
   - Fail-closed defaults verified on [`BackendCapabilities`](file:///Users/jl/tether/crates/input-core/src/backend.rs#L63-L85) and [`BackendStatus`](file:///Users/jl/tether/crates/input-core/src/backend.rs#L99-L113).
 
 ### ST-001 — Storage Architecture Contract
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - Defined in [`docs/components/storage.md`](file:///Users/jl/tether/docs/components/storage.md).
   - Enforces per-user platform app data roots, atomic temp-file $\to$ sync $\to$ parse $\to$ rename $\to$ directory sync sequence, owner-only permissions (`0700`/`0600` on Unix, explicit DACL on Windows), lifetime `.instance.lock`, fail-closed quarantine, and segregated reset scopes.
 
 ### DT-001 — Desktop Shell Contract
+
 - **Status:** Fully Compliant.
 - **Findings:**
   - Defined in [`docs/components/desktop-shell.md`](file:///Users/jl/tether/docs/components/desktop-shell.md).
@@ -196,16 +205,19 @@ The following checks were **independently executed** in the audit environment. T
 ## 4. Evaluation of Blocked & Partial Tasks
 
 ### F-002 — NPM Development Tooling (BLOCKED)
+
 - **Status:** Legitimate External Blocker.
 - **Review:** Configured dependencies in [`package.json`](file:///Users/jl/tether/package.json) include `@eslint/js`, `eslint`, `markdownlint-cli2`, `prettier`, `typescript`, `typescript-eslint`, `vite`, `vitest`. Because sandbox network isolation prevents reaching the npm registry, dependencies could not be fetched and [`pnpm-lock.yaml`](file:///Users/jl/tether/pnpm-lock.yaml) has no resolved packages.
 - **Impact on IC-003:** **NONE.** `crates/input-core` has zero Node/npm dependencies.
 
 ### PR-002 — Protobuf Schema & Validation Baseline (BLOCKED)
+
 - **Status:** Legitimate External Blocker.
 - **Review:** [`proto/buf.yaml`](file:///Users/jl/tether/proto/buf.yaml) and [`proto/tether/control/v1/control.proto`](file:///Users/jl/tether/proto/tether/control/v1/control.proto) are written and compile under `protoc 29.3`. However, Buf CLI 1.72.0 is not installed in the environment. `buf lint` (under `STANDARD`) and `buf breaking` (under `FILE`) have not run.
 - **Impact on IC-003:** **NONE.** `crates/input-core` uses internal semantic domain types and deliberately does not depend on Protobuf or wire schemas.
 
 ### BV-001 — Early Android Browser Network Validation (BLOCKED)
+
 - **Status:** Legitimate Hardware Blocker.
 - **Review:** Requires physical Android device running current Chrome on a controlled LAN to validate Local Network Access (LNA) prompts and same-origin WebSocket upgrades before finalizing `NW-001`.
 - **Impact on IC-003:** **NONE.** BV-001 is a dependency gate for LAN networking (Wave 5), not input core (Wave 3).
@@ -217,9 +229,11 @@ The following checks were **independently executed** in the audit environment. T
 ### A. Confirmed Defects
 
 #### Finding D-01: `MockInputBackend` Lacks Observability and Latency Simulation for `release_all`
+
 - **Severity:** Medium
 - **Location:** [`crates/input-core/src/mock.rs:197-212`](file:///Users/jl/tether/crates/input-core/src/mock.rs#L197-L212)
 - **Evidence & Failure Scenario:**
+
   ```rust
   fn release_all(&mut self) -> ReleaseReport {
       let held = self.held_buttons.len().saturating_add(self.held_keys.len());
@@ -237,6 +251,7 @@ The following checks were **independently executed** in the audit environment. T
       report
   }
   ```
+
   `release_all` does not invoke `self.record(...)`, does not increment `self.next_sequence`, does not increment a release counter, and does not advance `self.simulated_elapsed` or invoke `self.time_advance`. If the dispatcher triggers emergency release due to queue saturation or network timeout when no mouse buttons or keys happen to be held down (e.g. during rapid motion or scroll), calling `backend.release_all()` leaves `MockInputBackend` in an identical state: `calls()` is unchanged, `held_counts()` remains `(0, 0)`, and `is_neutral()` remains `true`. A test cannot assert whether `release_all` was called.
 - **Correction:** Add a `release_call_count: usize` field and a `release_calls(&self) -> usize` getter to `MockInputBackend`. When `simulated_latency` is configured, advance `simulated_elapsed` and notify `time_advance` inside `release_all`.
 - **Blocks IC-003:** **No, but must be resolved during IC-003 implementation** when writing dispatcher fault and saturation tests.
@@ -246,6 +261,7 @@ The following checks were **independently executed** in the audit environment. T
 ### B. Architectural Concerns
 
 #### Finding A-01: `CapabilitySnapshot` Wire Schema Omits Explicit `atomic_click_available` Field
+
 - **Severity:** Low
 - **Location:** [`proto/tether/control/v1/control.proto:269-285`](file:///Users/jl/tether/proto/tether/control/v1/control.proto#L269-L285) vs [`crates/input-core/src/backend.rs:54`](file:///Users/jl/tether/crates/input-core/src/backend.rs#L54)
 - **Evidence & Failure Scenario:**
@@ -254,6 +270,7 @@ The following checks were **independently executed** in the audit environment. T
 - **Blocks IC-003:** **No** (can be deferred to `PR-002`/`PR-004`).
 
 #### Finding A-02: `MockInputBackend` Held Keys Storage Discards Press Order
+
 - **Severity:** Low
 - **Location:** [`crates/input-core/src/mock.rs:36`](file:///Users/jl/tether/crates/input-core/src/mock.rs#L36)
 - **Evidence & Failure Scenario:**
@@ -266,6 +283,7 @@ The following checks were **independently executed** in the audit environment. T
 ### C. Tooling & Build Hygiene
 
 #### Finding T-01: Monolithic `xtask check` Prevents Sub-System Check Execution
+
 - **Severity:** Low
 - **Location:** [`xtask/src/main.rs:177-231`](file:///Users/jl/tether/xtask/src/main.rs#L177-L231)
 - **Evidence & Failure Scenario:**
@@ -274,6 +292,7 @@ The following checks were **independently executed** in the audit environment. T
 - **Blocks IC-003:** **No** (developers can execute direct `cargo` commands).
 
 #### Finding T-02: Missing Git Repository Initialization in Workspace Root
+
 - **Severity:** Low
 - **Location:** `/Users/jl/tether`
 - **Evidence & Failure Scenario:**
@@ -297,6 +316,7 @@ The following checks were **independently executed** in the audit environment. T
 ## 6. Categorized Action Plan
 
 ### Findings that MUST Be Handled During IC-003
+
 1. **Enhance `MockInputBackend`:** Add `release_calls` counter to [`crates/input-core/src/mock.rs`](file:///Users/jl/tether/crates/input-core/src/mock.rs) so IC-003 tests can assert release execution when held counts are zero.
 2. **Preserve FIFO Press Order in Dispatcher Ledger:** The dispatcher ledger must maintain exact press order for keys and buttons, releasing non-modifiers then modifiers in reverse order.
 3. **Use Direct Cargo Commands for Gate Verification:** Do not rely on `cargo xtask check` until F-002 is unblocked; verify IC-003 using:
@@ -306,6 +326,7 @@ The following checks were **independently executed** in the audit environment. T
    - `cargo build --workspace --all-targets`
 
 ### Findings that Can Safely Be Deferred
+
 1. **`control.proto` Atomic Click Field Alignment:** Defer to `PR-002` / `PR-004`.
 2. **Buf CLI Format & Breaking Gate:** Defer to unblocking `PR-002`.
 3. **NPM Dependency Installation & TypeScript/ESLint/Vitest:** Defer to unblocking `F-002`.

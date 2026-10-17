@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SKIPPED_DIRECTORIES = new Set([".git", "dist", "node_modules", "target"]);
+const SKIPPED_DIRECTORIES = new Set([".git", ".pnpm-store", "dist", "node_modules", "target"]);
 const INLINE_LINK = /!?\[[^\]]*\]\(([^)]+)\)/g;
 const REFERENCE_LINK = /^\s*\[[^\]]+\]:\s*(\S+)/gm;
 
@@ -83,10 +83,7 @@ if (invokedPath === fileURLToPath(import.meta.url)) {
   if (failures.length > 0) {
     for (const failure of failures) {
       process.stderr.write(
-        failure.markdownFile +
-          ": broken local link " +
-          JSON.stringify(failure.destination) +
-          "\n",
+        failure.markdownFile + ": broken local link " + JSON.stringify(failure.destination) + "\n",
       );
     }
     process.exitCode = 1;

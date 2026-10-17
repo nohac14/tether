@@ -15,7 +15,7 @@ Protocol version one accepts only USB HID Keyboard/Keypad usage page `0x07` and
 the explicit ranges below:
 
 | Inclusive usages | Class | Deliberate boundary |
-|---|---|---|
+| --- | --- | --- |
 | `0x04..=0x65` | Standard keyboard | Excludes error usages `0x01..=0x03` and Keyboard Power `0x66` |
 | `0x67..=0xA4` | Extended keyboard | Stops before reserved `0xA5..=0xAF` |
 | `0xB0..=0xDD` | Extended keypad | Stops before reserved `0xDE..=0xDF` |
@@ -42,7 +42,7 @@ release order is the exact reverse. These are reviewed conventional plans, not
 claims that every focused application accepts them:
 
 | Command | Windows | macOS | Linux desktop/application convention |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Copy/Cut/Paste | Ctrl+C/X/V | Command+C/X/V | Ctrl+C/X/V |
 | Undo | Ctrl+Z | Command+Z | Ctrl+Z |
 | Redo | Ctrl+Y | Command+Shift+Z | Ctrl+Shift+Z |

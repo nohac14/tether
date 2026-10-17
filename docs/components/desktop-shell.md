@@ -64,7 +64,7 @@ TypeScript spelling without broadening the data or authority.
 ### Read-only commands
 
 | Command | Result |
-|---|---|
+| --- | --- |
 | `get_app_snapshot` | Revisioned status, listener/discovery state, selected interfaces, current safe addresses, permission/capability state, connected-device summaries, active controller, settings summary, and last safe error. |
 | `list_network_interfaces` | Current conservative interface candidates with stable identifier where available, type, flags, prefixes, addresses, selection state, and exclusion reason. No SSID/location request is made solely for display. |
 | `list_pending_pairings` | Bounded request IDs, source address summary, untrusted bounded client label, requested time, and expiry. Never includes the token. |
@@ -80,7 +80,7 @@ after a gap. The shell does not merge security-critical partial state locally.
 ### Mutating commands
 
 | Command | Required validation and effect |
-|---|---|
+| --- | --- |
 | `approve_interfaces` | Requires explicit foreground confirmation and an exact current interface-snapshot revision. Persists selected stable interface identities before starting the first non-loopback listeners. |
 | `set_auto_listen` | Records a separate explicit opt-in. Enabling it cannot approve a new interface and start-at-login cannot imply it. |
 | `start_listening` | Starts only currently approved interfaces after peer/authority policy is ready; otherwise returns a typed precondition error. |
@@ -203,7 +203,7 @@ verified by reading its effective state.
 Platform adapters translate observable events into core lifecycle messages:
 
 | Event | Required action |
-|---|---|
+| --- | --- |
 | Suspend/sleep preparation | Stop normal input admission, emergency release, invalidate ownership epoch, and close or suspend sessions before sleep when timing permits. |
 | Resume/wake | Re-inventory interfaces, addresses, permissions, and backend state; never restore held input; require a fresh epoch. |
 | Session lock | Stop input admission, release all, invalidate ownership, and update tray/UI. |

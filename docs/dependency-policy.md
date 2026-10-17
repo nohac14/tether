@@ -20,8 +20,15 @@ cost have been reviewed.
   and CI use the committed `Cargo.lock` with `--locked`.
 - The pnpm workspace uses the exact package-manager version in `package.json`.
   Direct JavaScript development/runtime versions remain exact, and the complete
-  `pnpm-lock.yaml` is committed. F-002 remains incomplete until its declared
-  tool dependencies are actually resolved into that lockfile.
+  `pnpm-lock.yaml` is preserved. Use the official npm registry, the pinned Node
+  runtime, and `pnpm install --frozen-lockfile --ignore-scripts` for the current
+  tool graph. No dependency lifecycle script is needed by this reviewed graph.
+  A future script/build approval requires source review, not a broad bypass.
+- Scoped npm overrides are explicit, exact, owner-approved security fixes:
+  `markdownlint-cli>smol-toml` 1.9.0, `markdownlint-cli>js-yaml` 5.4.1, and
+  `micromark-extension-math>katex` 0.18.2. Their compatibility tests belong to
+  the mandatory unit gate. Reevaluate the overrides when upstream ranges catch
+  up; do not expand them to unrelated consumers or silently alter direct pins.
 - Default and optional features are reviewed. Disable unused features where
   that materially reduces native code, build scripts, parsers, or attack
   surface without reimplementing maintained behavior.
@@ -35,19 +42,42 @@ cost have been reviewed.
 
 `deny.toml` initially allows only licenses needed by the reviewed graph:
 MIT, Apache-2.0, and Unicode-3.0. Workspace-private crates are excluded from
-third-party license evaluation. A newly encountered license is denied until its
+third-party Rust license evaluation. A newly encountered license is denied until its
 obligations and compatibility with desktop/web distribution are reviewed and
 the inventory is updated. License exceptions must name an exact crate/version
 and rationale; there are currently none.
+
+The npm development graph is reviewed separately in `dependency-inventory.md`;
+cargo-deny does not inspect it. The current additional BSD-2-Clause,
+BSD-3-Clause, ISC, Python-2.0, and BlueOak-1.0.0 packages are accepted only with
+their required notices retained. `run-con` uses its MIT alternative.
+The optional WASM graph's `tslib` 2.8.1 uses 0BSD; its unmodified runtime
+helper is accepted under that permissive license, with attribution retained
+in the inventory and any later notice bundle.
+MPL-2.0 Lightning CSS and its platform bindings are accepted as unmodified,
+development-only tools, not application dependencies to embed or ship. If
+those tools or covered code are redistributed, PK-005 must retain notices and
+satisfy the covered-source availability obligations before release. New
+runtime use, changed license terms, or modifications require another review;
+the Rust license allowlist is not broadened by this npm disposition.
 
 ## Advisory and update policy
 
 - `cargo deny check advisories` is the RustSec/yank gate. Advisories are not
   ignored without a dated, scoped risk acceptance and remediation deadline.
+- `pnpm audit --registry=https://registry.npmjs.org/` is the npm advisory gate,
+  including development and optional packages. No severity threshold or ignore
+  is used. A clean lookup is dated evidence, not a proof of vulnerability absence.
+- Use the reviewed `cargo-deny` 0.20.2 tool pin for local and future CI checks.
+  Install with `cargo install cargo-deny --version 0.20.2 --locked` from the
+  official crates.io registry. The tool's MSRV is 1.88.0 and is compatible with
+  the repository's Rust 1.99.0. Do not commit the executable or its caches.
 - `cargo deny check bans licenses sources` enforces duplicate, wildcard,
   license, registry, and Git-source policy. Duplicate versions warn initially
   and require review rather than automatic rejection because platform stacks
   can legitimately constrain them.
+- Internal path dependencies also specify an explicit workspace version;
+  leaving the requirement implicit is a wildcard under the same bans policy.
 - Dependabot checks Cargo, npm, and GitHub Actions weekly. Patch/minor updates
   are grouped; major changes remain individually reviewable. Every update must
   pass the same tests and platform gates as a manual change.
@@ -85,7 +115,9 @@ The local scanner catches common private keys, provider tokens, credential URLs,
 and literal credential assignments. Its generic literal-assignment rule has an
 intentional minimum value length of 16 characters; provider-specific rules use
 their documented token shapes. It enumerates only the current tracked and
-non-ignored worktree and does not inspect commits, deleted blobs, other refs, or
+non-ignored worktree. Paths explicitly reported deleted by Git have no worktree
+contents and are excluded; unexpected read failures still fail the scan. It
+does not inspect commits, deleted blobs, other refs, or
 Git history. It therefore complements rather than replaces the pinned,
 history-aware scanner required in F-005/IT-004. CI must scan all reachable Git
 history appropriate to the checkout, while retaining redacted output and a

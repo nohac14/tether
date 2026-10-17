@@ -298,7 +298,7 @@ The server may advertise lower effective limits, but neither side may negotiate
 above these version-1 ceilings:
 
 | Item | Hard ceiling |
-|---|---:|
+| --- | ---: |
 | Encoded WebSocket binary message / protobuf envelope | 65,536 bytes |
 | Operations in one batch | 256 |
 | UTF-8 bytes in one text operation | 4,096 |

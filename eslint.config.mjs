@@ -6,6 +6,7 @@ export default defineConfig(
   globalIgnores([
     "**/dist/**",
     "**/node_modules/**",
+    "**/.pnpm-store/**",
     "**/target/**",
     "apps/mobile-web/src/protocol/generated/**",
   ]),

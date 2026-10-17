@@ -19,7 +19,7 @@ before implementation of the corresponding component.
 ## Required architecture and decision documents
 
 | Document | Purpose | Gate / synchronization trigger |
-|---|---|---|
+| --- | --- | --- |
 | `docs/architecture-review.md` | Historical feasibility findings and original approval points | Complete; not a second specification |
 | `docs/architecture-decisions.md` | Accepted D-01–D-05, reconciled independent-review findings, rejected alternatives, rationale | Complete; binding interpretation of `SPEC.md` |
 | `docs/open-risks.md` | Platform uncertainties, evidence requirements, and release/capability gates | Updated whenever validation changes |
@@ -33,7 +33,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 ### System and cross-cutting
 
 | Proposed document | Required contents | Pre-code gate |
-|---|---|---|
+| --- | --- | --- |
 | `docs/components/system-overview.md` | Process model, dependency direction, startup/shutdown order, trust boundaries, shared terminology | `agent-core` |
 | `docs/components/security-threat-model.md` | Assets, trusted-LAN assumption, attacker classes, HTTP residual risk, origin/host checks, DoS limits, admin boundary, security test cases | pairing/network |
 | `docs/components/privacy-and-logging.md` | Prohibited data, redacted types, allowed aggregate metrics, log retention/rotation, diagnostics export | logging/diagnostics |
@@ -44,7 +44,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 ### Protocol, authentication, and networking
 
 | Proposed document | Required contents | Pre-code gate |
-|---|---|---|
+| --- | --- | --- |
 | `docs/components/protocol.md` | Envelope and ordered action batches, version/subprotocol negotiation, JavaScript heartbeats, message semantics, HID IDs, enums, limits, sequencing, timestamps, compatibility and field reservation rules | `.proto` schema |
 | `docs/components/pairing.md` | QR fragment format, token state machine, approval/denial/expiry, credential hashing/cookie attributes, origin scoping, rename/revoke flows | `pairing` |
 | `docs/components/pairing-lifecycle.md` | Fail-closed session, credential-store, and identity reset/rotation coordination sequence | F-07 prerequisite; extend during `pairing` |
@@ -55,7 +55,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 ### Input and mobile web
 
 | Proposed document | Required contents | Pre-code gate |
-|---|---|---|
+| --- | --- | --- |
 | `docs/components/input-backend.md` | `InputBackend` contract, semantic actions, capability/status model, dispatcher ordering, fractional accumulation, release/error guarantees | `input-core` |
 | `docs/components/mobile-gesture-engine.md` | Pointer identity model, regions, both drag methods/tap latency, tap/hold/drag/multitouch state chart, cancellation and orientation behavior, thresholds | gesture implementation |
 | `docs/components/scroll-engine.md` | Units, independent axes, sensitivity/direction, velocity estimator, anomaly rejection, momentum lifecycle, backend translation | scroll implementation |
@@ -67,7 +67,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 ### Desktop and native platforms
 
 | Proposed document | Required contents | Pre-code gate |
-|---|---|---|
+| --- | --- | --- |
 | `docs/components/desktop-shell.md` | Tauri IPC allowlist, tray/window/single-instance behavior, onboarding, stop/quit, autostart consent, lifecycle event delivery | Tauri shell |
 | `docs/components/windows-backend.md` | HID-to-scan-code mapping, extended keys, wheel units, Unicode packets, UIPI, permission/status and native tests | Windows backend |
 | `docs/components/macos-backend.md` | CoreGraphics mapping, Accessibility and Local Network permissions, Unicode/scroll behavior, sleep/session hooks, signing implications | macOS backend |
@@ -78,7 +78,7 @@ reasons, security/compatibility consequences, and superseding ADR if any.
 ## Test and operations documents
 
 | Proposed document | Purpose | Update trigger |
-|---|---|---|
+| --- | --- | --- |
 | `docs/operations/support-matrix.md` | Exact release claims: OS editions/versions, CPU, distro, compositor, browser, package | Every release/toolchain change |
 | `docs/operations/testing-strategy.md` | Unit/contract/integration/E2E/native/manual layers, fixtures, environment guards | Test architecture change |
 | `docs/operations/ci.md` | Jobs, platform coverage, required checks, generated-code and supply-chain gates | Workflow change |

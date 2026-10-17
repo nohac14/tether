@@ -412,7 +412,7 @@ session merely because XWayland is present.
 The project owner approved these decisions as a set on 2026-10-09:
 
 | ID | Recommended decision | Consequence |
-|---|---|---|
+| --- | --- | --- |
 | D-01 | Keep the `HttpOnly` host-only cookie. Treat each hostname/IP as a separate pairing scope; IP or mDNS-name changes can require re-pairing. | Preserves the specified browser security boundary and makes fallback limitations honest. |
 | D-02 | Tier 1 is Windows 11 x86-64, vendor-maintained macOS on arm64, and named Linux x86-64 distro/compositor releases. Windows 10 is supported only on vendor-serviced LTSC/IoT/ESU configurations; unserviced 22H2 is best effort. macOS x86-64 remains supported only while the selected OS/toolchain and real Intel hardware can validate it. Linux arm64 becomes a release target only after native hardware/package validation. Mobile claims name current tested Safari/iOS/iPadOS and Chrome/Android versions. | Replaces ambiguous “maintained versions” and “where practical” language with testable release claims. |
 | D-03 | On first launch, require desktop confirmation of proposed LAN interfaces before opening a non-loopback listener. Default admission is selected-interface plus on-link peer prefix. Auto-listen is later opt-in. | Reduces accidental exposure on public Wi-Fi and makes LAN-only enforceable, at the cost of one onboarding step. |

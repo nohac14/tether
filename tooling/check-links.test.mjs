@@ -41,7 +41,10 @@ describe("findBrokenLocalLinks", () => {
     mkdirSync(join(root, "docs"));
     writeFileSync(join(root, "docs", "README.md"), "# Docs\n");
     writeFileSync(join(root, "target.md"), "# Target\n");
-    writeFileSync(join(root, "README.md"), "[file](target.md) [directory](docs/) [self](#section)\n");
+    writeFileSync(
+      join(root, "README.md"),
+      "[file](target.md) [directory](docs/) [self](#section)\n",
+    );
 
     expect(findBrokenLocalLinks(root)).toEqual([]);
   });
@@ -53,6 +56,23 @@ describe("findBrokenLocalLinks", () => {
     expect(findBrokenLocalLinks(root)).toEqual([
       {
         destination: "not-there.md",
+        markdownFile: join(root, "README.md"),
+      },
+    ]);
+  });
+
+  it("ignores dependency-cache Markdown while checking source documentation", () => {
+    const root = temporaryDirectory();
+    mkdirSync(join(root, ".pnpm-store"));
+    writeFileSync(
+      join(root, ".pnpm-store", "README.md"),
+      "[dependency-only link](missing-vendor-file.md)\n",
+    );
+    writeFileSync(join(root, "README.md"), "[source link](missing-source-file.md)\n");
+
+    expect(findBrokenLocalLinks(root)).toEqual([
+      {
+        destination: "missing-source-file.md",
         markdownFile: join(root, "README.md"),
       },
     ]);

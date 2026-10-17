@@ -43,7 +43,7 @@ click remains valid, and the ordinary down/move/up drag sequence remains valid.
 The following commands completed successfully on macOS arm64 with Rust 1.99.0:
 
 | Check | Result |
-|---|---|
+| --- | --- |
 | `cargo fmt --all --check` | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Passed, zero warnings |
 | `cargo test --workspace --all-targets` | Passed, 50 tests (33 input-core, 7 test-support, 10 xtask) |

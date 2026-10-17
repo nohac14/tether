@@ -428,7 +428,7 @@ Touch position on the phone must not correspond to an absolute position on the d
 ### 7.1 Gesture definitions
 
 | Gesture | Default action |
-|---|---|
+| --- | --- |
 | One-finger movement | Move cursor |
 | One-finger tap | Left click |
 | Double tap | Double click |
@@ -2845,53 +2845,53 @@ The following references are preferred sources for implementation decisions.
 
 **Web platform**
 
-- MDN secure contexts: https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts
-- MDN WebSocket: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-- MDN Pointer Events: https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events
-- MDN pointer capture: https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture
-- MDN beforeinput: https://developer.mozilla.org/en-US/docs/Web/API/Element/beforeinput_event
-- MDN Visual Viewport: https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
-- MDN Screen Wake Lock: https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API
-- MDN secure-context feature restrictions: https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts/features_restricted_to_secure_contexts
-- Chrome local-network restrictions: https://developer.chrome.com/release-notes/142
+- MDN secure contexts: <https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts>
+- MDN WebSocket: <https://developer.mozilla.org/en-US/docs/Web/API/WebSocket>
+- MDN Pointer Events: <https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events>
+- MDN pointer capture: <https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture>
+- MDN beforeinput: <https://developer.mozilla.org/en-US/docs/Web/API/Element/beforeinput_event>
+- MDN Visual Viewport: <https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport>
+- MDN Screen Wake Lock: <https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API>
+- MDN secure-context feature restrictions: <https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Secure_Contexts/features_restricted_to_secure_contexts>
+- Chrome local-network restrictions: <https://developer.chrome.com/release-notes/142>
 
 **Rust and desktop**
 
-- Axum: https://docs.rs/axum/
-- Tokio: https://tokio.rs/
-- Tauri 2: https://v2.tauri.app/
-- mDNS Rust crate: https://docs.rs/mdns-sd/
-- Protocol Buffers for TypeScript: https://protobufes.com/
-- Protocol Buffers for Rust: https://docs.rs/prost/
+- Axum: <https://docs.rs/axum/>
+- Tokio: <https://tokio.rs/>
+- Tauri 2: <https://v2.tauri.app/>
+- mDNS Rust crate: <https://docs.rs/mdns-sd/>
+- Protocol Buffers for TypeScript: <https://protobufes.com/>
+- Protocol Buffers for Rust: <https://docs.rs/prost/>
 
 **Networking**
 
-- Multicast DNS RFC 6762: https://www.rfc-editor.org/rfc/rfc6762
-- DNS-SD RFC 6763: https://www.rfc-editor.org/rfc/rfc6763
-- HTTP cookies RFC 6265: https://www.rfc-editor.org/rfc/rfc6265
-- WebSocket RFC 6455: https://www.rfc-editor.org/rfc/rfc6455
-- Android `.local` resolver: https://source.android.com/docs/core/ota/modular-system/dns-resolver
+- Multicast DNS RFC 6762: <https://www.rfc-editor.org/rfc/rfc6762>
+- DNS-SD RFC 6763: <https://www.rfc-editor.org/rfc/rfc6763>
+- HTTP cookies RFC 6265: <https://www.rfc-editor.org/rfc/rfc6265>
+- WebSocket RFC 6455: <https://www.rfc-editor.org/rfc/rfc6455>
+- Android `.local` resolver: <https://source.android.com/docs/core/ota/modular-system/dns-resolver>
 
 **Windows**
 
-- Microsoft SendInput: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput
-- Microsoft mouse input: https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput
-- Microsoft keyboard input: https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput
-- Microsoft Windows 10 lifecycle: https://learn.microsoft.com/en-us/lifecycle/announcements/windows-10-end-of-support
+- Microsoft SendInput: <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput>
+- Microsoft mouse input: <https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput>
+- Microsoft keyboard input: <https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput>
+- Microsoft Windows 10 lifecycle: <https://learn.microsoft.com/en-us/lifecycle/announcements/windows-10-end-of-support>
 
 **macOS**
 
-- Apple CoreGraphics: https://developer.apple.com/documentation/coregraphics
-- Apple local-network privacy: https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy
+- Apple CoreGraphics: <https://developer.apple.com/documentation/coregraphics>
+- Apple local-network privacy: <https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy>
 
 **Linux**
 
-- XDG RemoteDesktop portal: https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html
-- libei: https://libinput.pages.freedesktop.org/libei/
-- EI text interface: https://libinput.pages.freedesktop.org/libei/interfaces/ei_text/
-- XTEST protocol: https://www.x.org/releases/current/doc/xextproto/xtest.pdf
-- libxkbcommon X11 integration: https://xkbcommon.org/doc/current/group__x11.html
-- X11 Rust bindings: https://docs.rs/x11rb/
+- XDG RemoteDesktop portal: <https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html>
+- libei: <https://libinput.pages.freedesktop.org/libei/>
+- EI text interface: <https://libinput.pages.freedesktop.org/libei/interfaces/ei_text/>
+- XTEST protocol: <https://www.x.org/releases/current/doc/xextproto/xtest.pdf>
+- libxkbcommon X11 integration: <https://xkbcommon.org/doc/current/group__x11.html>
+- X11 Rust bindings: <https://docs.rs/x11rb/>
 
 Agent implementers should consult current API documentation and compatibility information rather than assuming the contents of this specification guarantee a dependency's current behavior.
 

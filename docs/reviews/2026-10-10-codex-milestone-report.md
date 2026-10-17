@@ -85,7 +85,7 @@ the committed policy in CI before release.
 ## Verification results
 
 | Command or check | Actual result |
-|---|---|
+| --- | --- |
 | `cargo fmt --all --check` | Passed |
 | `cargo clippy --workspace --all-targets -- -D warnings` | Passed with no warnings |
 | `cargo test --workspace --all-targets` | Passed: 72 tests total (14 config, 41 input-core, 7 test-support, 10 xtask) |
