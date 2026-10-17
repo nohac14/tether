@@ -12,4 +12,4 @@ workspace = true
 backend-conformance = []
 
 [dev-dependencies]
-tether-test-support = { path = "../test-support" }
+tether-test-support = { version = "=0.1.0", path = "../test-support" }

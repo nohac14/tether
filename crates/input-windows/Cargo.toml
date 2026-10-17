@@ -9,10 +9,10 @@ publish = false
 workspace = true
 
 [dependencies]
-tether-input-core = { path = "../input-core" }
+tether-input-core = { version = "=0.1.0", path = "../input-core" }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", default-features = false, features = ["std", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [dev-dependencies]
-tether-input-core = { path = "../input-core", features = ["backend-conformance"] }
+tether-input-core = { version = "=0.1.0", path = "../input-core", features = ["backend-conformance"] }

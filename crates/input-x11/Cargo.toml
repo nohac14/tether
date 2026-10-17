@@ -9,10 +9,10 @@ publish = false
 workspace = true
 
 [dependencies]
-tether-input-core = { path = "../input-core" }
+tether-input-core = { version = "=0.1.0", path = "../input-core" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = { version = "0.14.0", default-features = false, features = ["xkb", "xtest"] }
 
 [dev-dependencies]
-tether-input-core = { path = "../input-core", features = ["backend-conformance"] }
+tether-input-core = { version = "=0.1.0", path = "../input-core", features = ["backend-conformance"] }
