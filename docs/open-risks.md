@@ -22,7 +22,7 @@ must not be converted into an undocumented workaround.
 ## Risk register
 
 | ID | Severity | State | Risk and impact | Required validation / exit criterion | Plan gate |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | R-001 | Release blocker | Open | Baseline HTTP/`ws://` provides no confidentiality or transport authentication against an active or passive LAN attacker. A stolen cookie permits input impersonation until revoked. | Threat-model review confirms all warnings and mitigations; packet-level tests demonstrate no false encryption claim; public docs clearly require a trusted private LAN. A future encrypted design requires its own ADR and authenticated web-delivery solution. | IT-004, RL-001 |
 | R-002 | Release blocker | Open | `.local` resolution and DNS-SD behavior vary with Android/iOS versions, routers, multicast filtering, VPNs, client isolation, hostname conflicts, and macOS Local Network permission. | Physical-device matrix verifies preferred `.local`, conflict rename, DHCP change, and IP-fragment fallback. Every failed `.local` case has an actionable fallback and separate-scope re-pair flow. | DS-002, NW-008, IT-005 |
 | R-003 | Tracked | Open | Screen Wake Lock is normally unavailable over baseline HTTP; video-based workarounds may fail, stop, consume power, or change across browsers. | Test native API eligibility and revocation plus explicitly activated video fallback on every claimed mobile browser. Document per-browser result and battery behavior; unsupported cases remain normal screen-timeout behavior. | MW-011, IT-005 |
@@ -73,6 +73,16 @@ there was no X server or live XKB/XTEST observation. R-009 remains open because
 there was no GNOME/KDE portal/EI session and `reis` is still a provisional
 adapter. See `components/native-backend-spikes.md` and the dated milestone
 record for the exact evidence classification.
+
+The initial inventory was limited to an Apple Silicon Mac with 16 GiB RAM and
+approximately 60 GiB free disk. The owner subsequently reported a Windows 11
+AMD PC, providing a candidate native Windows/x86-64 test host. Its exact
+architecture/build, tools, access, and resources remain unverified. No physical
+Android phone is available. `manual-tests/test-environment-setup.md` now prefers
+Windows preparation and assessment of Linux VM capacity; no VM or Windows
+validation has run. R-006, R-008–R-010, R-012, R-015, and R-018 remain open;
+neither cross-compilation nor ARM emulation/virtualization satisfies their
+missing physical-device, target-architecture, permission, or native test gates.
 
 ## Architectural questions remaining
 

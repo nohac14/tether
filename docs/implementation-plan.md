@@ -3,11 +3,15 @@
 **Plan status:** Architecture accepted. A-004, F-001, F-003, F-006, PR-001,
 IC-001, IC-002, IC-003, IC-004, ST-001, ST-002, DT-001, and F-004 are
 complete. ST-003 and NB-001 are also complete. The Wave 8 inert translation
-milestone is implemented and awaiting independent review; MAC-001 is complete,
+milestone is implemented and independently reviewed; MAC-001 is complete,
 while Windows/X11/Wayland native-environment portions remain blocked and are not
-support claims. F-002 is configured but its exact pinned npm graph is not
-installed or resolved in `pnpm-lock.yaml`; a separately authorized install and
-successful command suite are still required. Sessions, networking, pairing,
+support claims. Gemini accepted that milestone in its 2026-10-16 Wave 8 review.
+F-002 is complete after the owner-approved ESLint pin correction, Markdown CLI
+replacement, and three scoped parser security overrides. The 224-entry npm graph
+is resolved in `pnpm-lock.yaml`, frozen installation and npm audit pass, and the
+full aggregate repository check passes. F-005 is now dependency-ready but not
+implemented or remotely executed. Local cargo-deny 0.20.2 checks also pass.
+Sessions, networking, pairing,
 authentication, live native injection, and user interfaces are not implemented.
 **Delivery target:** The complete production application in `SPEC.md`; no task
 authorizes a disposable transport, backend, or MVP substitute.
@@ -29,7 +33,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 0 — Approval and executable architecture
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | A-001 | DONE | Owner | D-01–D-05 were explicitly approved on 2026-10-09 and recorded in `architecture-decisions.md`. |
 | A-002 | DONE | A-001 | Reconciled both reviews into `SPEC.md`, including accepted/corrected/rejected findings, with rationale in `architecture-decisions.md`. Documentation-only validation passed. |
 | A-003 | DONE | A-002 | Finalized the system/trust boundaries, threat and support policy, repository/documentation structure, test strategy, and risk gates in the authoritative and supporting documents. |
@@ -38,24 +42,24 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 1 — Repository, toolchains, and quality gates
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | F-001 | DONE | A-003 | Created the pinned Cargo/pnpm workspaces, application/crate skeletons, editor and ignore policy, and both lockfiles. On 2026-10-09, dependency-free frozen pnpm install and both frontend skeleton builds passed with Node 24.19.0/pnpm 11.25.0; `cargo fmt --all --check`, strict workspace/all-target Clippy, workspace/all-target tests, and workspace/all-target builds passed with Rust/Cargo 1.99.0. |
-| F-002 | BLOCKED | F-001; permission to download pinned npm development dependencies | Exact compatible versions and root commands are configured for strict TypeScript, ESLint, Prettier, Vitest, Markdown lint, and local-link checks; the link checker has unit tests. On 2026-10-16 the bundled Node 24.19.0/pnpm 11.25.0 pair successfully queried the exact `eslint@10.11.0` package from the official npm registry, proving a practical compatible tool path. No install was authorized or run, and `pnpm-lock.yaml` still has no resolved snapshots. Completion requires a separately authorized successful install, the updated lockfile, and every root F-002 command passing; do not claim the uninstalled checks. |
+| F-002 | DONE | F-001 | Installed the reviewed graph from official npm using Node 24.19.0/pnpm 11.25.0 with lifecycle scripts disabled; 224 entries with integrity hashes are resolved in `pnpm-lock.yaml`. Owner approved correcting `@eslint/js` to 10.0.1, replacing CLI2 with `markdownlint-cli` 0.49.1, and scoped overrides for smol-toml 1.9.0, KaTeX 0.18.2, and js-yaml 5.4.1. Every other direct pin is unchanged. Frozen install and audit pass (zero known advisories). All root types, ESLint, Prettier, Markdown, links, unit, and skeleton build commands pass via `cargo xtask check`: 118 Rust, 10 Vitest, and four Node tests; 60 Markdown files. Existing lint rules were preserved; baseline documentation received mechanical fixes only. Parser/renderer, lint coverage, cache exclusion, and scanner-deletion regressions pass. License/optional-native scope is recorded in the dependency inventory. No browser or production package validation is claimed. |
 | F-003 | DONE | F-001 | Added the `cargo xtask` alias and commands for aggregate checks, guarded Buf generation, guarded fixture generation, packaging preflight, and explicit native/manual-test acknowledgement plus named-target guards. The aggregate excludes native injection. On 2026-10-09 strict Clippy passed, all 10 argument/guard/error tests passed, and help plus current package preflight executed successfully. Later protocol tasks must add their guarded Buf and fixture inputs. |
-| F-004 | DONE | F-001 | Added fail-closed registry/Git/wildcard, license, advisory, duplicate, and lockfile policy in `deny.toml` and `docs/dependency-policy.md`; weekly Cargo/npm/GitHub Actions Dependabot configuration; a bounded redacting repository secret scanner with three unit tests; and a reviewed inventory of every resolved Rust dependency. The Wave 8 locked platform graph and licenses were added on 2026-10-16; locked metadata passed, the only all-target duplicate is the reviewed `syn` 2/3 split, the scanner inspected 130 text files with no finding, and local links in 56 Markdown files passed. Formatting, strict workspace/all-target Clippy, all 118 workspace tests, builds, and no-dependency docs passed on macOS arm64. `cargo-deny` is not installed, so no network advisory/license-policy lookup is claimed; F-005 must execute the committed policy before release. F-002's Vitest-based link-checker unit test remains blocked by its unresolved npm dependencies. |
-| F-005 | BLOCKED | F-002, F-003 | Create CI matrices for native Rust/frontend builds, formatting/lint/unit tests, protocol generation, browser tests, and packaging smoke builds. Jobs must label actual vs manual coverage. CI must run pinned cargo-deny policy/advisory checks and a pinned redacting secret scanner over all reachable history appropriate to the checkout. F-003 is done, but F-002 remains incomplete because the pinned npm graph is not resolved in `pnpm-lock.yaml`; do not create or claim a partial CI gate. |
+| F-004 | DONE | F-001 | Added fail-closed registry/Git/wildcard, license, advisory, duplicate, and lockfile policy in `deny.toml` and `docs/dependency-policy.md`; weekly Cargo/npm/GitHub Actions Dependabot configuration; a bounded redacting worktree secret scanner; and a reviewed dependency inventory. On 2026-10-16 cargo-deny 0.20.2 was built through official Cargo tooling and passed locked advisories/bans/licenses/sources after ten internal path dependencies gained explicit `=0.1.0` versions. The reviewed `syn` 2/3 duplicate warning remains visible; no policy weakening was added. Formatting, strict all-feature/all-target workspace Clippy, all 118 Rust tests, builds, and docs passed on macOS arm64. F-002 now runs the link-checker suite and four Node scanner tests, including tracked deletion handling with unexpected read failures still fatal. F-005 still owns CI and history-aware scanning. |
+| F-005 | READY | F-002, F-003 | Create CI matrices for native Rust/frontend builds, formatting/lint/unit tests, protocol generation, browser tests, and packaging smoke builds. Jobs must label actual vs manual coverage. CI must run cargo-deny 0.20.2 policy/advisory checks and a pinned redacting secret scanner over all reachable history appropriate to the checkout. F-002's full local aggregate gate and clean npm audit now pass; CI is not implemented or remotely executed by the F-002 follow-up. Do not represent future generation/browser/package gates or unexecuted jobs as complete. |
 | F-006 | DONE | F-001 | Added the dev-only `tether-test-support` crate with a shared atomic monotonic fake clock, explicit-seed deterministic random stream, owner-only auto-cleaning temporary directories, bounded typed trace capture that cannot accept free-form text, and no-op OS lifecycle handles. On 2026-10-09 strict Clippy and all 7 unit tests passed; the crate has no production dependencies and must be used only as a dev-dependency. |
 
 ## Wave 1A — Early mobile-browser network validation
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | BV-001 | BLOCKED | A-004, F-001; current physical Android device | Build a test-only same-origin Axum HTTP/WebSocket probe using the intended server stack and a browser page that derives `ws:`/`wss:`, host, and active port from the page runtime origin. On a current physical Android phone with current Chrome, record the exact device/Android/Chrome/network versions and verify direct LAN navigation, any Local Network Access prompt and allow/deny behavior, same-origin `ws://` upgrade, active non-default port preservation, reconnect, and browser console/network errors. Keep the probe under `tests/e2e`; it must expose no input injection or credential path and must not ship. A simulator or desktop Chrome is not a substitute. Update R-012 and the browser support matrix from the observed result. |
 
 ## Wave 2 — Protocol contract
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | PR-001 | DONE | A-003, F-001 | Added the accepted `docs/components/protocol.md` contract for transport, envelopes, ordering, negotiation, capabilities, epoch/sequence/timing, JavaScript heartbeats, safe errors/close codes, canonical input identities, hard limits, and compatibility. Separate security and native-backend review passes are recorded in `protocol-reviews.md`; they approve schema work without claiming independent, executable, or hardware validation. Local-link validation passed. |
 | PR-002 | BLOCKED | PR-001, F-003; atomic-click capability contract unresolved | Added `proto/buf.yaml` and the authoritative `tether.control.v1` schema with direction-specific envelopes, reserved ranges, ordered `oneof` operations, explicit non-zero enum semantics, separate physical keys/text/logical/media actions, negotiation, capabilities, control state, heartbeats, and safe errors. `protoc` 29.3 compiled a descriptor on 2026-10-09. On 2026-10-16 the official Buf 1.72.0 Darwin-arm64 release binary was downloaded to a temporary path, matched its GitHub release SHA-256 `5176f23a6118b9978de1340c3e3301a4ed0d48e16a669510be44b4c355170d57`, and passed format, `STANDARD` lint, and build. No binary was installed or committed. Completion still requires the initial `FILE` breaking baseline and resolution of the audit-confirmed atomic-click capability mismatch by adding an explicit availability field safely or defining and testing zero maximum count as unavailable. |
 | PR-003 | BLOCKED | PR-002 | Pin reproducible Rust/TypeScript generation and commit generated sources. `xtask check-generated` must regenerate to a temporary tree and produce no diff offline from checked-in tools/cache. |
@@ -65,7 +69,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 3 — Input core and fail-safe session model
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | IC-001 | DONE | A-002, PR-001 | Added `docs/components/input-backend.md` defining semantic fixed-point actions, USB HID keys, separate sensitive text/logical/media actions, current capability/status snapshots and permission transitions, closed safe error categories, serialized execution context, dispatcher/backend held-state mirrors, idempotent best-effort release ordering, platform obligations, and mock/fault-test requirements. |
 | IC-002 | DONE | IC-001, F-006 | Added bounded fixed-point, button, USB HID key, sensitive text, logical/media, capability/status, safe error, and release domain types plus `InputBackend` and a payload-redacting `MockInputBackend`. The mock supports status changes, deterministic fake-time latency, injected execute/release outcomes, and a held-state mirror. On 2026-10-09 formatting, strict all-target Clippy, all 10 unit tests, and the all-target crate build passed. |
 | IC-003 | DONE | IC-002 | Added the dedicated-thread `InputDispatcher` with a bounded logical-action queue, monotonic positions, safe adjacent motion/scroll coalescing and barriers, a separately reserved coalescing release mailbox, admission shutdown/cancellation on saturation and faults, press-ordered held-state ledger, explicit suspend/resume/fault modes, panic and poison handling, idempotent cleanup, and internally consistent neutrality checks. The Gemini IC-003 review findings were resolved with a persistent terminal-fault latch and rejection of atomic clicks on held buttons; regression tests cover the full fault/ordinary-release/resume sequence, repeated and racing releases, shutdown from fault, ledger immutability, valid clicks, and drag behavior. Enhanced the mock with release observability and deterministic release latency. On 2026-10-10 formatting, strict workspace/all-target Clippy, 50 workspace tests including 33 input-core tests, and workspace/all-target builds passed. No native input ran. |
@@ -78,7 +82,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 4 — Persistence, pairing, and device management
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | ST-001 | DONE | A-002, F-006 | Added `docs/components/storage.md` with exact per-user roots, separated versioned file envelopes and limits, lifetime process locking, atomic same-directory write/sync/replace order, owner-only permission and path-safety policy, deterministic migrations, fail-closed corruption recovery, reset scopes, serialized revisions, and native verification requirements. |
 | ST-002 | DONE | ST-001 | Implemented strict schema-v2 `settings.json` persistence and deterministic v1 migration; positive revisions and stale-write conflicts; bounded strict Serde JSON decoding; lifetime standard-library file locking; create-new temporary write/flush/sync/re-read/rename; Unix directory sync, `0700`/`0600` tightening, symlink/opened-file/hard-link defenses; exact abandoned-temp cleanup; corruption quarantine and confirmed recovery; redacted errors; and reload-required indeterminate commits. Fourteen tests cover restart, migration, malformed/oversize/unknown/duplicate/trailing input, future schemas, lock contention, interrupted files, every injected commit failure phase, Unix permissions/path attacks, and redaction. On 2026-10-10 formatting, strict workspace/all-target Clippy, all 72 workspace tests, workspace/all-target build, and no-dependency docs passed on macOS arm64. Non-Unix permission setup fails closed; R-018 blocks Windows persistence/support until explicit DACL/reparse implementation and native validation, and no Linux/Windows native validation is claimed. |
 | ST-003 | DONE | ST-002 | Implemented independent 256-bit installation identity and 128-bit hostname seed generation through `getrandom` OS entropy; deterministic entropy is test-only. Added the distinct strict `tether.identity` schema-v1 envelope with a 16 KiB ceiling, stable 48-bit preferred `.local` suffix and bounded conflict names, atomic persistence/revisioned rotation, fail-closed corruption quarantine and restart behavior, explicit reset, paired-device invalidation gates, redacted diagnostics, and settings-equivalent Unix path/permission defenses. F-01 now uses descriptor-based permission tightening for validated open files and revalidates inode/path state; a path-swap regression proves the replacement pathname is not chmodded. Twenty-eight config tests pass, including injected entropy and every identity commit phase. On 2026-10-12 component formatting, strict all-target Clippy, tests, build, and no-dependency docs passed on macOS arm64. R-018 still blocks Windows storage; no Windows/Linux native validation is claimed. |
@@ -90,7 +94,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 5 — LAN network and discovery services
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | NW-001 | BLOCKED | A-002, ST-002, BV-001 | Write network-server contract with default-port selection policy, exact routes, selected-interface listeners, on-link peer admission, IPv4/IPv6 canonicalization, Host/Origin allowlists, quotas, deadlines, body/frame limits, headers, and cache behavior. Incorporate the recorded Android Chrome LNA and same-origin LAN WebSocket result without generalizing beyond the tested versions. |
 | NW-002 | BLOCKED | NW-001 | Implement cross-platform interface inventory model with stable identifiers where available, type/flags/prefix/address data, conservative default exclusions, and user selection persistence. Test fixtures for Wi-Fi, Ethernet, VPN, VM, container, loopback, multiple prefixes, and IPv6. |
 | NW-003 | BLOCKED | NW-001, NW-002 | Implement listener supervisor for one or more selected local addresses, port collision failure, peer-prefix admission, stop/rebind, and graceful drain. Network-namespace/socket integration tests cover unexpected peers and address loss. |
@@ -106,7 +110,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 6 — Mobile web application
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | MW-001 | BLOCKED | F-002, PR-003, NW-004 | Build the mobile UI shell, responsive region geometry, `visualViewport`/safe-area handling, portrait/landscape layouts, edge-navigation gutters for either vertical-strip side, preserved horizontal strip and neutral corner, status states, themes, semantic controls, and local preference schema/migrations. Unit and viewport geometry tests pass. |
 | MW-002 | BLOCKED | MW-001, NW-006 | Implement the authenticated client connection state machine: origin-derived URL, hello/capabilities, standby/control request, bounded exponential backoff with jitter, auth-required flow, protocol mismatch, visibility/pagehide best effort, and no held-state replay. Fake-clock tests pass. |
 | MW-003 | BLOCKED | MW-001, PR-004 | Write and implement the React-independent gesture state machine with pointer capture and per-ID tracking for tap, double tap, long-press drag, double-tap drag, two/three-finger taps, cancellation, capture loss, region boundaries, and orientation reset. Test both drag methods separately/together and measure tap latency with double-tap drag off/on against the documented interaction budget. |
@@ -123,7 +127,7 @@ workspace manifests, and build configuration are coordinated.
 ## Wave 7 — Desktop shell and orchestration
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | AC-001 | BLOCKED | IC-003, SS-004, ST-002, PA-004, NW-008 | Implement `agent-core` ordered startup, service supervision, state snapshots, coordinated rebind, stop-control, and reverse-order shutdown. Fake services verify every partial-start and partial-stop failure path. |
 | DT-001 | DONE | A-003, F-001 | Added `docs/components/desktop-shell.md` with the no-LAN administration boundary, bounded revisioned command/event DTOs, least-privilege Tauri capability/CSP rules, startup and single-instance ordering, tray states, close-vs-quit, explicit autostart consent, and fail-safe OS lifecycle mapping. Current official Tauri 2 capability, single-instance, close-event, and autostart behavior was checked on 2026-10-09; no native behavior is claimed. |
 | DT-002 | BLOCKED | DT-001, AC-001 | Implement the thin Tauri composition root, least-privilege capabilities, single-instance handling, window close-to-tray, tray/menu state, and safe full quit. Tauri mock/runtime tests pass. |
@@ -140,13 +144,13 @@ contracts are stable. Each backend first proves feasibility without changing the
 shared interface, then implements, then passes isolated native validation.
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | NB-001 | DONE | IC-001, PR-001 | Added one explicit version-one USB HID Keyboard/Keypad allowlist, exhaustive reviewed Windows/macOS/Linux logical-command chord plans with no fabricated Linux task-manager mapping, redacted chord diagnostics, shared action-capability preflight, and an opt-in inert backend conformance suite. The suite checks more than 400 canonical actions when capabilities are advertised, requires every HID usage to map to balanced down/up or an explicit unsupported result, covers all advertised buttons/logical/media commands and independent axes, rejects unavailable capabilities before backend execution, and verifies held-state plus repeated idempotent release. Forty-nine input-core tests pass; strict all-feature/all-target Clippy, build, and no-dependency docs passed on 2026-10-12 macOS arm64. No native mapper, native injection, or physical-device validation is claimed. |
 | WIN-001 | BLOCKED | NB-001; actual Windows environment | Implemented a redacted pure `SendInput` event-plan mapper using `windows` 0.62.2 for relative motion, five buttons, both wheel axes, partial scan/extended-key mappings, media keys, and correct UTF-16 surrogate-unit pairs. General keyboard capability remains advertised while unmappable HID usages return `Unsupported`; inert conformance and partial-failure/release tests pass, and strict Clippy/check cross-compiles for Windows x86-64. No Windows host was available, so actual `SendInput` return behavior, UIPI, OS acceleration, layouts, wheel consumers, DPI/monitors, and neutralization are not validated. Keep blocked pending native spike evidence and independent review; do not treat cross-compilation as support. |
 | WIN-002 | BLOCKED | WIN-001, IC-004 | Implement production Windows backend on a serialized execution context with permission/status/capabilities and error mapping. Unit-test structure generation without injecting input. |
 | WIN-003 | BLOCKED | WIN-002, DT-006 | Run guarded native tests on supported Windows 11 and serviced Windows 10 targets: layouts, Unicode/surrogate-pair apps, horizontal scroll, pointer-speed/acceleration settings, mixed-DPI multi-monitor boundaries, normal/elevated targets, session lock, firewall, installer and autostart. Record evidence. |
 | MAC-001 | DONE | NB-001 | Selected maintained generated `objc2-core-graphics` 0.3.2 bindings rather than local FFI. Added redacted inert plans for relative motion, five buttons/click state, continuous scroll, partial keycode maps, UTF-16 text, Command chords, and auxiliary media keys; honest unsupported HID behavior; release/error tests; and the shared conformance suite. On 2026-10-16 it compiled on macOS arm64, executed the non-prompting Accessibility preflight, and passed formatting, strict Clippy, tests, build, and docs. It did not create/post input, prompt for permission, validate target applications/media behavior, signing identity, Intel macOS, acceleration, or displays; those remain MAC-002/003 and R-007. |
-| MAC-002 | BLOCKED | MAC-001, IC-004 | Implement production macOS backend, Accessibility preflight/onboarding hooks without synthetic canary input, Local Network metadata/diagnostics/retry behavior, stable bundle/build identity configuration, and sleep/session behavior. Unit-test event construction where possible. |
+| MAC-002 | READY | MAC-001, IC-004 | Gemini's 2026-10-16 Wave 8 review cleared this dependency-ready task. Implement production macOS backend, Accessibility preflight/onboarding hooks without synthetic canary input, Local Network metadata/diagnostics/retry behavior, stable bundle/build identity configuration, and sleep/session behavior. Unit-test event construction where possible. Native posting remains opt-in; this tooling follow-up has not started MAC-002. |
 | MAC-003 | BLOCKED | MAC-002, DT-006 | Run stable-identity signed/notarized native tests on supported Apple Silicon and Intel configurations: Accessibility and Local Network grant/deny/revoke/upgrade persistence, Unicode target apps, Command shortcuts, scroll axes, pointer acceleration, mixed-density display boundaries, sleep/wake, menu-bar mode, retry guidance and autostart. |
 | X11-001 | BLOCKED | NB-001, A-002; actual X11 environment | Implemented an `x11rb` 0.14.0 XKB/XTEST probe-snapshot model and redacted inert plans for bounded relative motion, buttons, partial discovered keycodes, layout-mappable text preflight, logical/media keys, and independent fractional Button 4–7 scrolling. Tests cover missing connection/XTEST, unsupported mappings, whole-text rejection, balanced scroll, residue reset, partial failures, held cleanup, and shared conformance; strict Clippy/check cross-compiles for Linux x86-64. No X server was available, so live extension queries, XKB/group changes, application scrolling, connection loss, and native events remain unvalidated. Keep blocked pending target evidence and independent review. |
 | X11-002 | BLOCKED | X11-001, IC-004 | Implement production X11 backend with runtime capability reporting, fractional wheel accumulation, mappable-text preflight, and serialized X connection ownership. |
@@ -159,7 +163,7 @@ shared interface, then implements, then passes isolated native validation.
 ## Wave 9 — Cross-component hardening and performance
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | IT-001 | BLOCKED | MW-012, DT-007, WIN-002, MAC-002, X11-002, WAY-003 | Run full mock-backed system tests from pairing QR request through control, standby transfer, revoke, reconnect, app stop, network change, and shutdown. Verify neutral state after every scenario. |
 | IT-002 | BLOCKED | IT-001 | Add malformed/fuzz/load suites for HTTP, WebSocket, protobuf, authentication, session actor, gesture/text state machines, storage, and discovery events. Set regression corpus retention without sensitive payloads. |
 | IT-003 | BLOCKED | IT-001 | Measure browser sampling, RTT, server queue latency, backend injection duration, CPU, memory, wakeups, and battery-relevant traffic on representative hardware. Tune bounded queues/coalescing/momentum; document before/after data. |
@@ -170,7 +174,7 @@ shared interface, then implements, then passes isolated native validation.
 ## Wave 10 — Packaging, release, and final acceptance
 
 | ID | Status | Depends on | Deliverable and completion evidence |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | PK-001 | BLOCKED | DT-007, WIN-003, IT-004 | Produce signed Windows installer(s), private-network firewall rule behavior, install/upgrade/uninstall/start-menu/autostart tests, WebView2 strategy, data preservation/removal choices, and signature verification. |
 | PK-002 | BLOCKED | DT-007, MAC-003, IT-004 | Produce universal or per-architecture signed/notarized `.app` and DMG per accepted support policy. Test fresh install, App Translocation/move to Applications, permission identity persistence, upgrade, uninstall guidance and launch-at-login. |
 | PK-003 | BLOCKED | DT-007, X11-003, WAY-004, IT-004 | Produce `.deb` and `.rpm` with exact WebKitGTK/GTK/tray/runtime dependencies and desktop/autostart entries. Test clean VM install/upgrade/remove on every supported distro baseline. |
