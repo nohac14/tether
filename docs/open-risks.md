@@ -1,7 +1,7 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-10-16
+**Last reviewed:** 2026-11-14
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
@@ -21,6 +21,13 @@ must not be converted into an undocumented workaround.
 
 ## Risk register
 
+ADR 0004 records the owner's Windows-first request without a Windows test
+machine. Windows builds may be produced as unvalidated development artifacts;
+R-006/R-015/R-018 remain open. SDK/CRT license use and scoped tool
+acquisition are now explicitly owner-approved, while native build/test
+access remains unavailable, not inferred from cross-target compilation. Linux work
+is deferred; R-019 is retained rather than suppressed or reported resolved.
+
 | ID | Severity | State | Risk and impact | Required validation / exit criterion | Plan gate |
 | --- | --- | --- | --- | --- | --- |
 | R-001 | Release blocker | Open | Baseline HTTP/`ws://` provides no confidentiality or transport authentication against an active or passive LAN attacker. A stolen cookie permits input impersonation until revoked. | Threat-model review confirms all warnings and mitigations; packet-level tests demonstrate no false encryption claim; public docs clearly require a trusted private LAN. A future encrypted design requires its own ADR and authenticated web-delivery solution. | IT-004, RL-001 |
@@ -33,14 +40,110 @@ must not be converted into an undocumented workaround.
 | R-008 | Capability blocker | Open | XTEST exposes keycodes and discrete wheel buttons, not general Unicode or high-resolution scroll. Layout/group changes and horizontal-scroll application behavior vary. | Named X11 configurations validate XTEST detection, current XKB mapping updates, layout-mappable preflight, unmappable errors, independent fractional accumulators, balanced Buttons 4–7, release, logout, and package dependencies. | X11-001–X11-003 |
 | R-009 | Capability blocker | Open | Wayland support depends on portal v2, compositor EIS behavior, permission grants, restore-token rotation, EI capabilities, and the maturity of the Rust EI adapter. Optional EI text may be absent or differ by version. | Time-boxed `ashpd`/`reis` spike and guarded GNOME/KDE tests cover handshake, denial, restore, pointer, both scroll axes, keys, optional UTF-8 text limits/order, pause/resume/removal, compositor restart, and release. Select `reis`, approve isolated libei FFI by ADR, or narrow support. | WAY-001–WAY-004 |
 | R-010 | Release blocker | Open | Linux package/runtime compatibility depends on distribution WebKitGTK/GTK, tray integration, portal packages, XTEST/XKB/libei availability, architecture, and display server. | Define exact distro/desktop versions from native clean-system tests; verify `.deb`/`.rpm`, optional AppImage, offline launch, autostart, permissions, and both supported input paths. | X11-003, WAY-004, PK-003–PK-004 |
-| R-011 | Tracked | Open | The exact default server port and collision/firewall policy are not yet validated; an unstable fallback breaks bookmarks and firewall expectations. | Check current service assignments; select a documented configurable default; test visible collision handling, persisted fallback, QR/mDNS updates, upgrade behavior, and narrowly scoped firewall rules. | NW-001, NW-003, PK-001 |
-| R-012 | Tracked | Open | Browser Local Network Access policy continues to evolve and may add prompts or restrictions despite same-origin LAN delivery. | Run the early BV-001 gate on a current physical Android/Chrome device before the network contract, then retest claimed Chrome/Android and Safari/iOS releases against direct navigation, same-origin WebSocket upgrade with the active port, permission denial, private/public address transitions, and browser updates. | BV-001, NW-008, IT-005 |
+| R-011 | Tracked | Open | NW-001 selects configurable port 54321/TCP in the IANA Dynamic/Private range; actual collision, firewall, and package behavior still need validation. | Implement and test visible collision handling, explicitly approved/persisted alternatives, QR/mDNS updates, upgrade behavior, and narrowly scoped firewall rules. Registry review is dated 2026-10-25 and is not an exclusive registration or proof of local availability. | NW-003, DS-003, PK-001 |
+| R-012 | Tracked | Open | Browser LAN access policy continues to evolve and may add prompts or restrictions despite same-origin delivery. | Under owner-approved ADR 0002, run BV-001 first on the actual physical iPhone/Safari before the personal-use network contract: direct navigation, observed permissions/denial where exposed, same-origin WebSocket with the active port, and reconnect. Record absent prompts and unavailable denial/reset tests rather than inventing them. Android Chrome LNA remains a separate expansion gate before Android claims. Retest actual supported versions after browser changes. | BV-001, NW-008, IT-005 |
 | R-013 | Tracked | Open | `SIGKILL`, `TerminateProcess`, kernel failure, sudden power loss, or a failed injection facility can prevent release cleanup. | Fault tests cover every observable path, panic unwind, and startup neutralization. User docs state the uncatchable limit; no test or marketing language claims otherwise. | SS-004, IT-001, RL-001 |
 | R-014 | Release blocker | Open | Pointer feel can vary with phone sampling, server coalescing, OS acceleration, display density, user settings, and mixed-monitor boundaries. | Measure ordered end-to-end behavior on representative phone/desktop pairs and each claimed OS. Establish per-platform tuning ranges without reordering clicks or relying on absolute screen coordinates. | IC-004, WIN/MAC/X11/WAY native gates, IT-003 |
 | R-015 | Release blocker | Open | Actual hardware, signed identities, and clean OS installations may not be available for every intended target. | Create a test inventory before release work. A missing configuration is either acquired/tested or removed from the support claim; CI/cross-compilation never substitutes for evidence. | A-004, IT-006, RL-002 |
 | R-016 | Release blocker | Open | Malformed/flooded clients can exhaust parser, connection, session, dispatcher, or OS input queues and could starve release work. | Fuzz/load tests demonstrate bounded memory, CPU, connections, messages, and queued bytes. Saturation clears discardable motion, executes priority release, closes the session, and leaves the mock/native backend neutral. | PR-004, NW-007, IT-002, IT-004 |
 | R-017 | Tracked | Open | Browsers may purge persistent cookies or segregate storage for bookmarks/home-screen modes, causing apparent credential loss. | Test normal tabs, bookmarks, private modes as applicable, and supported home-screen conveniences. Loss returns to an understandable re-pair flow and never exposes the credential to JavaScript. | PA-001–PA-003, IT-005 |
 | R-018 | Release blocker | Open | Rust standard filesystem APIs provide the required lifetime locking and replacement primitives on current Windows, but do not expose explicit owner DACL construction or complete reparse/hard-link inspection. ST-002 and ST-003 therefore fail closed on Windows rather than accepting inherited ACLs as compliant. | Select and security-review a maintained safe Windows ACL/reparse implementation or approve a narrowly isolated audited Windows FFI boundary; cross-compile it and validate owner/System/Administrators access, broad-inheritance removal, reparse/hard-link attacks, lock contention, settings/identity replacement, power-loss recovery, reset, and upgrade behavior on actual Windows 11 before enabling persistent state. | ST-002/ST-003 Windows follow-up, IT-004, PK-001 |
+
+## 2026-11-14 tooling security refresh
+
+R-023 — **Windows cross-build acquisition blocker, open 2026-11-14:**
+official VS 17 release and VS 18 stable channel metadata both advertise a
+manifest payload digest/size that differs from the corresponding HTTPS body.
+No SDK payload was used. xwin 0.10.0's source omits that manifest checksum check;
+do not treat the tool's default omission as satisfying Tether's provenance gate.
+Resolve using matching authenticated Microsoft metadata/artifacts, or a reviewed
+native Windows build environment, before qualifying WB-001. The official LLVM
+archive hash/attestation verifies; no TLS/DNS/security checks were disabled.
+Detailed expected/observed hashes are in the
+[dated checkpoint](manual-tests/2026-11-14-protocol-tooling.md). R-018 is separate:
+an executable built elsewhere still cannot enable Windows persistence until
+its native security tests pass.
+
+R-022 — **Development dependency verification blocker, closed 2026-11-14:**
+the refreshed npm audit found moderate GHSA-g3hv-75wg-m249 in locked minimatch
+10.2.6 through four lint/tooling parents. It is not a demonstrated Tether LAN
+exploit. The owner approved four exact
+parent-scoped 11.0.1 overrides with compatibility/source/transitive review;
+installation, frozen lockfile, clean complete audit, five new compatibility
+regressions and the full repository aggregate now pass. Direct pins and prior
+overrides are unchanged. No ignore/severity waiver or global override was added.
+See the
+[proposal/evidence](reviews/2026-11-14-npm-tooling-findings.md). Historical clean
+audits remain historical results, not a current clean claim.
+
+## 2026-10-25 discovery candidate blocker
+
+R-021 — **Discovery implementation/capability blocker, open 2026-10-25:**
+mdns-sd 0.21.6's worker performs initial all-interface multicast setup before
+client selection commands. The source-reviewed candidate is not adopted or
+runtime-started. The owner accepted ADR 0003 on 2026-10-25; the reviewed Mac-native
+ABI spike compiles and has inert tests. Separately approved en0/TCP 54322 native
+registration, exact local scoped A/AAAA/SRV/TXT, browse add/removal and graceful
+stop now pass; physical phone and packet containment have not run.
+Validate per-interface containment, custom-host A/AAAA, multiple addresses in
+one RRset, conflicts, withdrawal, daemon/permission failure and native lifecycle.
+Synchronous system calls can stall despite readiness: DS-003 must isolate the
+owner and bound external waits without unsafe concurrent deallocation.
+D-03 is unchanged. DS-002 is in progress; DS-003 remains blocked. See the
+[candidate review](reviews/2026-10-25-mdns-candidate-review.md),
+[binding review](reviews/2026-10-25-bonjour-binding-review.md) and
+[qualification procedure](manual-tests/macos-bonjour-qualification.md).
+
+## 2026-10-23 macOS and advisory checkpoint
+
+R-019 — **Verification/release blocker, open:** the 2026-10-23 pinned
+cargo-deny refresh fails on Linux Wayland transitives `zvariant` 5.15.1,
+`zbus_names` 4.3.5, and `zvariant_derive` 5.15.1. RustSec
+[0370](https://rustsec.org/advisories/RUSTSEC-2026-0370.html),
+[0371](https://rustsec.org/advisories/RUSTSEC-2026-0371.html), and
+[0372](https://rustsec.org/advisories/RUSTSEC-2026-0372.html) were issued on
+2026-10-17 after the previous successful run. They report unmaintained standalone
+crates merged into zbus 6, not a demonstrated exploitable defect in Tether.
+Review the ashpd/zbus migration and rerun compatibility, license, source, and
+advisory checks before closing the gate. Do not remove the Linux crates, waive
+advisories, or change reviewed pins silently to obtain green results. The new
+Mac code adds no new registry package/version and does not use these transitives.
+
+The 2026-11-14 cargo-deny 0.20.2 refresh still fails on the same three advisories
+with no new advisory finding. Full-graph bans/licenses/sources pass after the
+exact reviewed development-only foldhash 0.1.5 Zlib disposition. Additional
+individual Windows x86-64 and Mac arm64 target checks pass; these are dependency
+graph results on this Mac, not native execution or a substitute for the failed
+Linux-inclusive gate. Linux migration remains deferred, not silently waived.
+
+The 2026-10-23 macOS checkpoint implements actual posting code but deliberately
+does not execute it. The non-prompting probe reports no Accessibility grant;
+no prompt was requested. Non-injecting native event construction/inspection
+passes with WindowServer access, while ordinary sandboxed construction fails.
+R-007/R-014 remain open, including application behavior, actual notification
+delivery, media, displays, and permission persistence. ADR 0001 permits unsigned
+personal builds but does not turn those results into validated support.
+
+### Frontend tooling and pinned runtime
+
+R-020 — **Security/verification blocker, closed 2026-10-23:** the initial npm
+refresh found seven development-tool advisories (two high, three moderate,
+two low). Vite 8.1.0 was affected by GHSA-698v-4r3x-3vcv,
+GHSA-r825-w8mm-5pxw, [GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm),
+GHSA-9jrq-w75r-8gcw, and GHSA-rq7h-c2jc-7f22. markdown-it 14.3.2 was
+affected by GHSA-vfgh-jcmw-g37q and
+[GHSA-gfr2-rv44-r23c](https://github.com/advisories/GHSA-gfr2-rv44-r23c).
+The owner authorized only Vite 8.1.6, markdown-it 14.3.3 within the existing
+range, necessary transitives, and restoration of pinned Node 24.19.0. The
+resolved graph changes only those two package versions; all other direct pins,
+overrides, and package integrity hashes are unchanged. Frozen installation and
+the full npm audit now pass with zero findings. Official Node's Darwin-arm64
+archive matched its published SHA-256 before extraction; verification uses
+that isolated runtime with pnpm 11.25.0, not the drifted bundled Node 24.22.1.
+The final verification record is
+[the scoped remediation report](reviews/2026-10-23-tooling-security-remediation.md).
+No vulnerable dev server was exposed; the application must never ship Vite's
+development server. The separate R-019 Rust advisory gate still fails.
 
 ## Required evidence format
 
@@ -78,7 +181,16 @@ The initial inventory was limited to an Apple Silicon Mac with 16 GiB RAM and
 approximately 60 GiB free disk. The owner subsequently reported a Windows 11
 AMD PC, providing a candidate native Windows/x86-64 test host. Its exact
 architecture/build, tools, access, and resources remain unverified. No physical
-Android phone is available. `manual-tests/test-environment-setup.md` now prefers
+Android phone is available. The owner subsequently confirmed an iPhone using
+Safari and explicitly approved ADR 0002's iPhone-first BV-001 gate. On
+2026-10-25 the owner reported iOS 27.0.1 Safari successfully loading the HTTP
+page, completing same-origin JavaScript round trips, and stopping the count on
+Disconnect, with no prompts observed. The owner then explicitly confirmed all
+four reconnect/app-switch/Wi-Fi/server-stop checks passed. BV-001 is complete
+for that personal configuration; R-012 remains open for broader untested
+conditions, packaged identity, and expansion platforms. See
+[the scoped physical evidence](manual-tests/2026-10-25-iphone-safari-lan.md).
+`manual-tests/test-environment-setup.md` now prefers
 Windows preparation and assessment of Linux VM capacity; no VM or Windows
 validation has run. R-006, R-008–R-010, R-012, R-015, and R-018 remain open;
 neither cross-compilation nor ARM emulation/virtualization satisfies their
@@ -86,11 +198,37 @@ missing physical-device, target-architecture, permission, or native test gates.
 
 ## Architectural questions remaining
 
-There is no unresolved architectural question that prevents beginning the
-dependency-ordered implementation plan. The following choices are deliberately
-deferred to measured implementation gates:
+NW-002's Mac provider has now executed read-only on the available host; this
+does not validate network-change handling, physical IPv6 connectivity or
+Windows/Linux providers. OS service identities do not prove network continuity;
+automatic restoration remains closed when context is unknown. Darwin's short
+socket-creation/close-on-exec window must be addressed by the future child-spawn
+layer's close-default/serialization policy. See the
+[provider checkpoint](manual-tests/2026-10-25-interface-provider.md).
 
-1. the exact product default port and persisted collision fallback;
+DS-002's subsequent source review now proves mdns-sd 0.21.6 cannot establish
+the exact allowlist before its worker's initial multicast setup. It is not
+adopted; no daemon ran, lockfile dependency was added or D-03 requirement waived.
+Command/event channels are bounded, but cache/resource/lifecycle gates remain
+unvalidated. The [candidate review](reviews/2026-10-25-mdns-candidate-review.md)
+and accepted ADR 0003 record the owner-approved Mac-native alternative. The
+binding review and inert/SDK checks are implemented; initial scoped Mac native
+registration/query/cleanup passes are recorded in the
+[Bonjour checkpoint](manual-tests/2026-10-25-bonjour-boundary.md). The rest of the
+native matrix is untested and R-021 is not closed by those partial results.
+
+NW-002's read-only Mac provider and NW-003's supervisor now pass their scoped
+host/model/loopback checks. That does not validate physical interface changes,
+IPv6 LAN connectivity, packaged permission/firewall behavior or other platforms.
+Network-context stability remains unestablished; matching names/indexes/addresses
+never justify auto-listen. The coordinator/session/HTTP integration is not
+implemented. See the [listener evidence](manual-tests/2026-10-25-listener-supervisor.md).
+
+Discovery's owner decision is resolved by accepted ADR 0003; remaining native
+gates do not block unrelated ready tasks or change D-01–D-05. The following other
+choices remain deferred to measured implementation gates:
+
+1. native collision/firewall behavior for the selected configurable default port;
 2. the exact first release OS/browser/distribution version matrix;
 3. `reis` versus an ADR-approved isolated `libei` FFI adapter;
 4. per-browser availability of the optional video keep-awake fallback;

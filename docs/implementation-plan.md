@@ -1,18 +1,78 @@
 # Dependency-ordered implementation plan
 
-**Plan status:** Architecture accepted. A-004, F-001, F-003, F-006, PR-001,
+**Plan status:** Architecture accepted; personal-deployment scope follows ADR
+0001 (2026-10-23), without waiving functional/input-security requirements.
+Accepted ADR 0004 (2026-11-14) now prioritizes Windows 11 x86-64 delivery, then
+macOS, and defers Linux work. An unvalidated Windows artifact is permitted,
+not a completed/support-validated application. SDK/CRT license use and scoped
+build-tool acquisition are owner-approved; R-018 native storage-security evidence
+remains a separate gate. Continue
+dependency-ready shared work; do not mark native tests passed or silently
+enable Windows persistence to manufacture a runnable artifact.
+A-004, F-001, F-003, F-006, PR-001,
 IC-001, IC-002, IC-003, IC-004, ST-001, ST-002, DT-001, and F-004 are
 complete. ST-003 and NB-001 are also complete. The Wave 8 inert translation
 milestone is implemented and independently reviewed; MAC-001 is complete,
 while Windows/X11/Wayland native-environment portions remain blocked and are not
 support claims. Gemini accepted that milestone in its 2026-10-16 Wave 8 review.
 F-002 is complete after the owner-approved ESLint pin correction, Markdown CLI
-replacement, and three scoped parser security overrides. The 224-entry npm graph
-is resolved in `pnpm-lock.yaml`, frozen installation and npm audit pass, and the
-full aggregate repository check passes. F-005 is now dependency-ready but not
-implemented or remotely executed. Local cargo-deny 0.20.2 checks also pass.
-Sessions, networking, pairing,
-authentication, live native injection, and user interfaces are not implemented.
+replacement, and three scoped parser security overrides. Its historical
+2026-10-16 224-entry npm graph passed frozen installation, npm audit and the
+aggregate repository check. F-005 is dependency-ready but not
+implemented or remotely executed. The 2026-10-16 cargo-deny pass is historical:
+the 2026-10-23 refresh fails on three new unmaintained Wayland D-Bus advisories
+(R-019); no ignore or silent dependency migration is approved. MAC-002 is now
+in progress: the live Quartz backend and inert safety tests are implemented,
+but actual posting, remaining onboarding/lifecycle wiring, and complete app
+integration are not validated.
+R-020's scoped remediation now resolves Vite 8.1.6 and markdown-it 14.3.3 with
+all other package versions preserved. Frozen installation and npm audit pass
+on restored, checksum-verified Node 24.19.0/pnpm 11.25.0. See
+`reviews/2026-10-23-tooling-security-remediation.md` for the final gate results;
+the separate R-019 failure still prevents a clean whole-project advisory gate.
+ADR 0002 now makes the owner's physical iPhone/Safari the first BV-001 gate.
+Its isolated Axum probe is prepared with loopback and browser-state tests;
+the owner reports iOS 27.0.1 Safari successfully loading it and completing
+same-origin JavaScript round trips over Wi-Fi, with Disconnect stopping the
+count and no prompts observed. The owner explicitly confirmed the four
+reconnect/app-switch/Wi-Fi/server-stop follow-up checks all passed. BV-001 is
+complete for that configuration under ADR 0002. NW-001's bounded network
+contract and documentation checks are complete. NW-002's shared policy/settings
+model and read-only Mac provider are complete, including actual local inventory
+and 27 network tests. Unchanged polls preserve approval revisions; changes or
+recovery after failure invalidate them. Windows/Linux adapters remain unimplemented. DS-001's
+bounded discovery contract is complete. NW-003's serialized supervisor, Mac
+socket adapter and safety interface now pass 49 network tests, including four
+real loopback tests and actual held-state mock-dispatcher cleanup. NW-004 is
+dependency-ready. DS-002 source review rejects mdns-sd 0.21.6 unchanged: its
+initial multicast setup precedes interface restrictions. The owner accepted
+ADR 0003 on 2026-10-25. The Mac-native Bonjour qualification boundary now
+compiles and passes inert tests. The separately approved en0/TCP 54322 diagnostic
+now passes initial Mac registration, scoped A/AAAA/SRV/TXT, browse add/removal and
+graceful cleanup. DS-002 remains in progress pending containment, permission,
+conflict/lifecycle and physical resolution evidence; DS-003 remains blocked.
+No production LAN service or Tether multicast daemon has been started. Cross-cutting
+network threat/privacy/resource contracts remain in force. Auto-listen
+restoration remains closed when network
+continuity is unknown; matching service IDs alone never establish continuity.
+Android Chrome LNA remains an expansion gate. No production networking task is
+advanced by an automated probe pass or incomplete physical evidence.
+Production sessions, HTTP/WS route serving, pairing, authentication, live native
+injection and user interfaces are not implemented. The application is not yet
+end-to-end runnable.
+
+The 2026-11-14 batch resolves F-007/R-022 through four approved minimatch
+overrides with source/license review, compatibility tests and a clean npm audit.
+PR-002's explicit atomic-click flag and frozen Buf FILE baseline pass their
+regressions. PR-003 now implements pinned offline Rust/TypeScript generation,
+redacted Rust diagnostics and generated-diff checks; the npm graph has 230
+entries. Only the owner-approved expectation on the generated capability
+message is allowed; strict workspace lint policy remains unchanged. Current
+full-graph cargo-deny still fails solely on R-019; separate Windows/macOS target
+checks pass and do not replace that failure. WB-001 qualifies cargo-xwin/LLVM
+tools but is blocked on R-023 Microsoft manifest digest mismatches. No SDK,
+NSIS installer or Windows executable is claimed. See the
+[dated checkpoint](manual-tests/2026-11-14-protocol-tooling.md).
 **Delivery target:** The complete production application in `SPEC.md`; no task
 authorizes a disposable transport, backend, or MVP substitute.
 
@@ -49,20 +109,26 @@ workspace manifests, and build configuration are coordinated.
 | F-004 | DONE | F-001 | Added fail-closed registry/Git/wildcard, license, advisory, duplicate, and lockfile policy in `deny.toml` and `docs/dependency-policy.md`; weekly Cargo/npm/GitHub Actions Dependabot configuration; a bounded redacting worktree secret scanner; and a reviewed dependency inventory. On 2026-10-16 cargo-deny 0.20.2 was built through official Cargo tooling and passed locked advisories/bans/licenses/sources after ten internal path dependencies gained explicit `=0.1.0` versions. The reviewed `syn` 2/3 duplicate warning remains visible; no policy weakening was added. Formatting, strict all-feature/all-target workspace Clippy, all 118 Rust tests, builds, and docs passed on macOS arm64. F-002 now runs the link-checker suite and four Node scanner tests, including tracked deletion handling with unexpected read failures still fatal. F-005 still owns CI and history-aware scanning. |
 | F-005 | READY | F-002, F-003 | Create CI matrices for native Rust/frontend builds, formatting/lint/unit tests, protocol generation, browser tests, and packaging smoke builds. Jobs must label actual vs manual coverage. CI must run cargo-deny 0.20.2 policy/advisory checks and a pinned redacting secret scanner over all reachable history appropriate to the checkout. F-002's full local aggregate gate and clean npm audit now pass; CI is not implemented or remotely executed by the F-002 follow-up. Do not represent future generation/browser/package gates or unexecuted jobs as complete. |
 | F-006 | DONE | F-001 | Added the dev-only `tether-test-support` crate with a shared atomic monotonic fake clock, explicit-seed deterministic random stream, owner-only auto-cleaning temporary directories, bounded typed trace capture that cannot accept free-form text, and no-op OS lifecycle handles. On 2026-10-09 strict Clippy and all 7 unit tests passed; the crate has no production dependencies and must be used only as a dev-dependency. |
+| F-007 | DONE | F-002, F-004 | Resolved GHSA-g3hv-75wg-m249 through four owner-approved exact minimatch 11.0.1 parent overrides. Reviewed source/licenses/new matcher transitive; five compatibility regressions, frozen scripts-disabled installation, zero-finding full npm audit and repository aggregate pass on macOS arm64. Direct pins/prior overrides unchanged; no global override or ignored advisory. R-022 closed for the dated result; no native Windows/CI/Rust advisory refresh is inferred. |
+| WB-001 | BLOCKED | F-001, F-004; owner SDK/tool consent | cargo-xwin 0.23.1 was built with locked official Cargo. LLVM 23.1.5's official archive hash/attestation and clang/lld/RC smoke commands pass on Mac arm64. R-023 blocks SDK acquisition: both official VS 17/18 channel payload hashes/sizes disagree with downloaded manifests; no checksum bypass or xwin manifest-check omission is accepted. Need matching authenticated vendor metadata or a separately available native Windows build environment. SDK/CRT pins, NSIS acquisition, cross-link/PE inspection and application packaging are not complete. Tools/caches stay outside Git; no Windows execution/support claim. |
 
 ## Wave 1A — Early mobile-browser network validation
 
+ADR 0002 records owner approval to validate personal use on their physical
+iPhone with Safari first. Android Chrome LNA remains an expansion gate, not a
+prerequisite to this personal-use path and not an inferred pass.
+
 | ID | Status | Depends on | Deliverable and completion evidence |
 | --- | --- | --- | --- |
-| BV-001 | BLOCKED | A-004, F-001; current physical Android device | Build a test-only same-origin Axum HTTP/WebSocket probe using the intended server stack and a browser page that derives `ws:`/`wss:`, host, and active port from the page runtime origin. On a current physical Android phone with current Chrome, record the exact device/Android/Chrome/network versions and verify direct LAN navigation, any Local Network Access prompt and allow/deny behavior, same-origin `ws://` upgrade, active non-default port preservation, reconnect, and browser console/network errors. Keep the probe under `tests/e2e`; it must expose no input injection or credential path and must not ship. A simulator or desktop Chrome is not a substitute. Update R-012 and the browser support matrix from the observed result. |
+| BV-001 | DONE | A-004, F-001; owner's physical iPhone/Safari | Implemented isolated `tests/e2e/lan-probe` with nine passing Rust and six browser-state/URL tests; all prior workspace gates passed in the preparation record. Under ADR 0002 the owner reports physical iPhone Safari/iOS 27.0.1 HTTP load, same-origin WS PASS/increasing page-runtime round trips, Disconnect/reconnect, return/reconnect after app switch and Wi-Fi off/on, and failed Connect after Ctrl-C, all passing; no permission prompts observed. Accepted evidence and unavailable prompt-denial/build metadata are explicit in `manual-tests/2026-10-25-iphone-safari-lan.md`. This closes only the early personal-use gate, not full app, packaged permission, input, or Android support. |
 
 ## Wave 2 — Protocol contract
 
 | ID | Status | Depends on | Deliverable and completion evidence |
 | --- | --- | --- | --- |
 | PR-001 | DONE | A-003, F-001 | Added the accepted `docs/components/protocol.md` contract for transport, envelopes, ordering, negotiation, capabilities, epoch/sequence/timing, JavaScript heartbeats, safe errors/close codes, canonical input identities, hard limits, and compatibility. Separate security and native-backend review passes are recorded in `protocol-reviews.md`; they approve schema work without claiming independent, executable, or hardware validation. Local-link validation passed. |
-| PR-002 | BLOCKED | PR-001, F-003; atomic-click capability contract unresolved | Added `proto/buf.yaml` and the authoritative `tether.control.v1` schema with direction-specific envelopes, reserved ranges, ordered `oneof` operations, explicit non-zero enum semantics, separate physical keys/text/logical/media actions, negotiation, capabilities, control state, heartbeats, and safe errors. `protoc` 29.3 compiled a descriptor on 2026-10-09. On 2026-10-16 the official Buf 1.72.0 Darwin-arm64 release binary was downloaded to a temporary path, matched its GitHub release SHA-256 `5176f23a6118b9978de1340c3e3301a4ed0d48e16a669510be44b4c355170d57`, and passed format, `STANDARD` lint, and build. No binary was installed or committed. Completion still requires the initial `FILE` breaking baseline and resolution of the audit-confirmed atomic-click capability mismatch by adding an explicit availability field safely or defining and testing zero maximum count as unavailable. |
-| PR-003 | BLOCKED | PR-002 | Pin reproducible Rust/TypeScript generation and commit generated sources. `xtask check-generated` must regenerate to a temporary tree and produce no diff offline from checked-in tools/cache. |
+| PR-002 | DONE | PR-001, F-003 | Initial schema, direction-specific envelopes, reserved ranges, ordered actions, negotiation/capabilities and safe error shapes are complete. On 2026-11-14 resolved audit A-01 with explicit atomic-click availability at field 21, retaining reserved 14–20 and positive count semantics. Added the frozen initial JSON descriptor FILE baseline, official per-host Buf 1.72.0 checksums, bounded offline/local gate and five real regressions: deletion fails, addition passes, baseline unchanged, tool failures are fatal. Pinned Node/Buf aggregate passes with 214 Rust, 24 Vitest and four Node tests; strict all-feature Rust checks/build/docs pass. New unrelated npm advisory R-022 is recorded, not suppressed. No generated protocol/domain/runtime implementation is claimed. |
+| PR-003 | IN PROGRESS | PR-002 | Implementation and local verification complete: exact prost family 0.14.6, syn 3.0.7, protobuf-es 2.17.0; generated Rust/TS in the worktree; offline scratch diff, redacted diagnostics, bounded/symlink/stale/missing/extra-output and LF-checkout checks, Rust/TS round trips. Final aggregate passes with 220 Rust/38 Vitest/four Node tests; all-feature strict Clippy/build/docs and Windows-target static checks pass. One owner-approved generated CapabilitySnapshot expectation only. Required generated-source Git commit remains blocked by the managed read-only .git grant; manual focused staging commands are in the checkpoint. Full-graph R-019 remains open, not waived. No PR-004/005 claim. |
 | PR-004 | BLOCKED | PR-003, F-006 | Implement wire-to-domain validation: enum checks, numeric bounds, UTF-8/name/text sizes, capability checks, session/version checks, and safe error mapping. Fuzz/proptest malformed envelopes. |
 | PR-005 | BLOCKED | PR-003, PR-004 | Create Rust↔TypeScript golden fixtures for every message family, unknown enum values, unknown fields, maximum sizes, and incompatible versions. Run in both toolchains in CI. |
 
@@ -95,15 +161,15 @@ workspace manifests, and build configuration are coordinated.
 
 | ID | Status | Depends on | Deliverable and completion evidence |
 | --- | --- | --- | --- |
-| NW-001 | BLOCKED | A-002, ST-002, BV-001 | Write network-server contract with default-port selection policy, exact routes, selected-interface listeners, on-link peer admission, IPv4/IPv6 canonicalization, Host/Origin allowlists, quotas, deadlines, body/frame limits, headers, and cache behavior. Incorporate the recorded Android Chrome LNA and same-origin LAN WebSocket result without generalizing beyond the tested versions. |
-| NW-002 | BLOCKED | NW-001 | Implement cross-platform interface inventory model with stable identifiers where available, type/flags/prefix/address data, conservative default exclusions, and user selection persistence. Test fixtures for Wi-Fi, Ethernet, VPN, VM, container, loopback, multiple prefixes, and IPv6. |
-| NW-003 | BLOCKED | NW-001, NW-002 | Implement listener supervisor for one or more selected local addresses, port collision failure, peer-prefix admission, stop/rebind, and graceful drain. Network-namespace/socket integration tests cover unexpected peers and address loss. |
-| NW-004 | BLOCKED | NW-003 | Implement embedded static-asset handler with hashed immutable assets, no-store entry/pairing responses, MIME correctness, SPA fallback rules, restrictive headers, and no directory/filesystem access. Snapshot header/cache tests pass. |
+| NW-001 | DONE | A-002, ST-002, BV-001 | Added `components/network-server.md` with current-IANA-reviewed proposed TCP port 54321, explicit collision/persistence policy, exact routes, interface-bound on-link admission, Host/Origin and cookie scope, bounded HTTP/WS budgets, JavaScript liveness, priority cleanup, security headers/cache/redaction, and implementation verification gates. Incorporated actual owner-reported Safari/iOS 27.0.1 physical results without broader claims. Markdown, links, formatting, secret and whitespace checks pass; no production server implemented or native firewall/package behavior claimed. |
+| NW-002 | DONE | NW-001 | Cross-platform bounded/redacted inventory/selection, persistence, binding/admission model plus read-only Mac provider completed under ADR 0001. OS service IDs are persistent only when unambiguous; random session IDs retire on loss/failure. Actual masks/flags and successful IPv6-status queries govern eligibility; unknowns fail closed. 27 network tests pass, including unchanged-poll approval preservation and index/failure invalidation, along with strict workspace/cross-target Clippy, workspace tests/builds and docs. Read-only native diagnostic observed one proposed Wi-Fi interface and unchanged consecutive inventories; no packets/listener/input or native network mutation. Windows/Linux providers, continuity evidence, ongoing change coordination and physical IPv6 remain unvalidated/deferred, not support claims. See `manual-tests/2026-10-25-interface-provider.md`. |
+| NW-003 | DONE | NW-001, NW-002 | Implemented serialized supervisor, independent non-cancelling safety tickets/two-second deadline, persistent fault latch, fresh pre/post-bind and idle/accept inventory validation, complete-set rollback, generation invalidation, shared 64-global/8-peer RAII transport quotas and forced teardown. Mac-native Tokio/socket2 adapter uses literal nonblocking/v6-only sockets without reuse-port; real tests verify collision, TIME_WAIT restart, native endpoints, peer rejection and rollback. 49 network and 196 workspace tests pass; strict workspace/cross-target Clippy, builds/docs pass. Four tests use actual loopback sockets; one native test checks pre-IO guards and remaining policy/lifecycle/input is inert/mock. No LAN/multicast/input posting, native Windows/Linux, namespace, packaged permission/firewall or physical DHCP tests ran; platform gaps remain under ADR 0001. Production core/session coordination and HTTP routing remain later tasks. See `manual-tests/2026-10-25-listener-supervisor.md`. |
+| NW-004 | READY | NW-003 | Implement embedded static-asset handler with hashed immutable assets, no-store entry/pairing responses, MIME correctness, SPA fallback rules, restrictive headers, and no directory/filesystem access. Snapshot header/cache tests pass. No implementation yet; the new discovery decision does not relax any routing/authentication prerequisite. |
 | NW-005 | BLOCKED | NW-003, PA-004 | Implement pairing request/approval completion routes, fragment-to-POST flow contract, cookie issuance/clearing, exact Host/Origin validation, no permissive CORS, request limits, and per-peer/global rate limiting. Attack-oriented HTTP tests pass. |
 | NW-006 | BLOCKED | NW-003, PR-005, SS-003, PA-003 | Implement authenticated binary WebSocket upgrade with cookie verification, subprotocol/hello negotiation, version/capability errors, quotas, frame limits, and session registration. Test absent/forged Origin, bad Host, malformed protobuf, revoked credentials, unsupported versions, and excessive connections. |
 | NW-007 | BLOCKED | NW-006, IC-003 | Implement bounded read/write tasks, client/server backpressure policy, motion/scroll coalescing boundaries, heartbeat integration, close reasons, and emergency safe suspension. Load tests prove bounded memory and neutral input after congestion. |
-| DS-001 | BLOCKED | ST-003, NW-002 | Write discovery contract for host/service names, TXT keys, no-secret policy, interface scope, conflict events, TTL/goodbyes, IP fallback selection, and DHCP/address-change ordering. |
-| DS-002 | BLOCKED | DS-001 | Validate the current mDNS dependency with selected-interface, A/AAAA, conflict probing/rename, re-register, goodbye, and permission-denied tests on all OS families. Replace it only through an ADR if a concrete gap appears. |
+| DS-001 | DONE | ST-003, NW-002 | Added `components/discovery.md`: ST-003-derived names, bounded PTR/SRV/TXT/no-secret metadata, exact pre-worker interface scope, TTL/goodbyes, conflict/command/event/deadline bounds, generation-safe DHCP/rebind/cleanup ordering, host-scoped re-pair and current IP fallback. Checked current official RFC/API documentation; the mdns-sd pre-worker allowlist/internal-bounds question remains an explicit DS-002 validation gate, not a claimed pass. No daemon or multicast traffic implemented/run. Documentation checks pass. |
+| DS-002 | IN PROGRESS | DS-001; accepted ADR 0003 | Rejected mdns-sd 0.21.6 unchanged with source evidence. Owner approved the Mac-native alternative and separately en0/TCP 54322 native testing. Reviewed six-function boundary, exact current scopes, custom A/AAAA, bounded pinned failure-latching slots, readiness quota/deadline and parent-only teardown have inert/SDK tests. Initial Mac registration, exact scoped A/AAAA/SRV/TXT queries, browse add/removal, repeated graceful stop and listener cleanup pass after fixing a regression-tested canonical callback type assumption. See `manual-tests/2026-10-25-bonjour-boundary.md`. Packet containment, multiple same-family RRsets, real conflicts/flaps, permission denial/recovery and physical phone resolution remain open; not DONE and no other-platform support inferred. |
 | DS-003 | BLOCKED | DS-002, NW-003 | Implement discovery service and address-change monitor. Coordinate release, listener rebind, re-advertisement, stale-session close, and updated QR/status atomically through `agent-core`. Simulate DHCP and interface flaps. |
 | NW-008 | BLOCKED | NW-004, NW-005, NW-006, DS-003 | Run full LAN server integration with mock input: primary `.local`, IP fallback, origin-scoped re-pair, hostname conflict, restart, revoked device, network change, and no-network mode. |
 
@@ -150,7 +216,7 @@ shared interface, then implements, then passes isolated native validation.
 | WIN-002 | BLOCKED | WIN-001, IC-004 | Implement production Windows backend on a serialized execution context with permission/status/capabilities and error mapping. Unit-test structure generation without injecting input. |
 | WIN-003 | BLOCKED | WIN-002, DT-006 | Run guarded native tests on supported Windows 11 and serviced Windows 10 targets: layouts, Unicode/surrogate-pair apps, horizontal scroll, pointer-speed/acceleration settings, mixed-DPI multi-monitor boundaries, normal/elevated targets, session lock, firewall, installer and autostart. Record evidence. |
 | MAC-001 | DONE | NB-001 | Selected maintained generated `objc2-core-graphics` 0.3.2 bindings rather than local FFI. Added redacted inert plans for relative motion, five buttons/click state, continuous scroll, partial keycode maps, UTF-16 text, Command chords, and auxiliary media keys; honest unsupported HID behavior; release/error tests; and the shared conformance suite. On 2026-10-16 it compiled on macOS arm64, executed the non-prompting Accessibility preflight, and passed formatting, strict Clippy, tests, build, and docs. It did not create/post input, prompt for permission, validate target applications/media behavior, signing identity, Intel macOS, acceleration, or displays; those remain MAC-002/003 and R-007. |
-| MAC-002 | READY | MAC-001, IC-004 | Gemini's 2026-10-16 Wave 8 review cleared this dependency-ready task. Implement production macOS backend, Accessibility preflight/onboarding hooks without synthetic canary input, Local Network metadata/diagnostics/retry behavior, stable bundle/build identity configuration, and sleep/session behavior. Unit-test event construction where possible. Native posting remains opt-in; this tooling follow-up has not started MAC-002. |
+| MAC-002 | IN PROGRESS | MAC-001, IC-004 | Implemented `MacOsBackend`/Quartz posting through `InputBackend`, driver-injected safety tests, full preflight/transition checks, fractional pointer and independent pixel-scroll conversion, drag/left-right modifier state, borrowed logical modifiers, bounded surrogate-safe Unicode, mirrored/in-flight cleanup, permanent fault retention, and session-active hooks. Added explicit user-gesture Accessibility request hook, non-posting native event/UTF-16 inspection tests, private bundle/privacy metadata, and a separately guarded motion-only diagnostic (not run live). Default tests never post input. The non-prompting probe reports `PromptRequired` both inside and outside the sandbox. Media remains unavailable, not falsely advertised. Task remains incomplete pending appropriate media handling, desktop onboarding/Local Network retry and OS notification wiring, and applicable validation; this is not a working phone-to-Mac application. Evidence is in `manual-tests/2026-10-23-macos-backend.md`. |
 | MAC-003 | BLOCKED | MAC-002, DT-006 | Run stable-identity signed/notarized native tests on supported Apple Silicon and Intel configurations: Accessibility and Local Network grant/deny/revoke/upgrade persistence, Unicode target apps, Command shortcuts, scroll axes, pointer acceleration, mixed-density display boundaries, sleep/wake, menu-bar mode, retry guidance and autostart. |
 | X11-001 | BLOCKED | NB-001, A-002; actual X11 environment | Implemented an `x11rb` 0.14.0 XKB/XTEST probe-snapshot model and redacted inert plans for bounded relative motion, buttons, partial discovered keycodes, layout-mappable text preflight, logical/media keys, and independent fractional Button 4–7 scrolling. Tests cover missing connection/XTEST, unsupported mappings, whole-text rejection, balanced scroll, residue reset, partial failures, held cleanup, and shared conformance; strict Clippy/check cross-compiles for Linux x86-64. No X server was available, so live extension queries, XKB/group changes, application scrolling, connection loss, and native events remain unvalidated. Keep blocked pending target evidence and independent review. |
 | X11-002 | BLOCKED | X11-001, IC-004 | Implement production X11 backend with runtime capability reporting, fractional wheel accumulation, mappable-text preflight, and serialized X connection ownership. |
@@ -172,6 +238,11 @@ shared interface, then implements, then passes isolated native validation.
 | IT-006 | BLOCKED | WIN-003, MAC-003, X11-003, WAY-004, IT-005 | Reconcile capability/support matrix with actual evidence. Any unsupported item is disabled and documented; no compilation-only support claim remains. |
 
 ## Wave 10 — Packaging, release, and final acceptance
+
+ADR 0001 defers commercial/public distribution, signing/notarization, and
+expanded-platform claims for personal builds. These rows remain uncompleted
+public-release gates, not blockers to all independent personal-use development.
+Actual installed-app and physical-browser behavior still requires verification.
 
 | ID | Status | Depends on | Deliverable and completion evidence |
 | --- | --- | --- | --- |

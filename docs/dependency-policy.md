@@ -29,6 +29,10 @@ cost have been reviewed.
   `micromark-extension-math>katex` 0.18.2. Their compatibility tests belong to
   the mandatory unit gate. Reevaluate the overrides when upstream ranges catch
   up; do not expand them to unrelated consumers or silently alter direct pins.
+- The 2026-11-14 scoped remediation also fixes minimatch at 11.0.1 only beneath
+  `eslint`, `@eslint/config-array`, `@typescript-eslint/typescript-estree` and
+  `markdownlint-cli`. Preserve all four consumer-resolution/behavior regressions
+  and the bounded preprocessing regression; no global override is approved.
 - Default and optional features are reviewed. Disable unused features where
   that materially reduces native code, build scripts, parsers, or attack
   surface without reimplementing maintained behavior.
@@ -45,7 +49,22 @@ MIT, Apache-2.0, and Unicode-3.0. Workspace-private crates are excluded from
 third-party Rust license evaluation. A newly encountered license is denied until its
 obligations and compatibility with desktop/web distribution are reviewed and
 the inventory is updated. License exceptions must name an exact crate/version
-and rationale; there are currently none.
+and rationale. BV-001 accepts only `matchit` =0.8.4's additional BSD-3-Clause
+obligation alongside MIT: both bundled license texts were reviewed; copyright,
+conditions, disclaimers, and the no-endorsement restriction must be retained.
+The probe is not a shipped application dependency; any future application use
+still requires its normal dependency/notice review. This exact exception does
+not broaden the Rust license allowlist or suppress advisory checks.
+
+PR-003 accepts `foldhash` =0.1.5's Zlib license only as an unmodified
+development transitive of prost-build/petgraph/hashbrown. Its full source
+notice was reviewed: retain that notice in source redistribution, do not
+misrepresent origin, and plainly mark any altered source. The exact
+cargo-deny license exception does not allow Zlib globally or suppress an
+advisory. It is not part of the protocol application runtime dependency tree.
+The protobuf-es browser runtime requires both Apache-2.0 and BSD-3-Clause
+notices, including Google's varint notice; PK-005 must include them, rather
+than treating the conjunction as a choice of license.
 
 The npm development graph is reviewed separately in `dependency-inventory.md`;
 cargo-deny does not inspect it. The current additional BSD-2-Clause,
