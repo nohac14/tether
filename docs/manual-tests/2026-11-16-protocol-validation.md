@@ -62,3 +62,9 @@ No Windows runtime, physical-device, live input, LAN listener, signed package,
 remote CI or Windows executable validation ran. R-018 and R-023 remain open.
 PR-005 owns cross-language golden interoperability; SS/PA/NW own actual session,
 authentication, rate-limiting, emergency cleanup and network admission integration.
+
+Post-commit boundary refinement: the build-identifier validator now includes
+ASCII space (0x20) in the contract's printable-ASCII range. A regression accepts
+both the lower printable endpoint and `~`; controls remain rejected. Component
+formatting, strict all-target Clippy, 24 protocol tests and all-target builds
+were rerun and passed. No wire/schema or product decision changed.

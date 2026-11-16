@@ -169,7 +169,7 @@ pub fn validate_client_hello(
         || !hello
             .build_identifier
             .bytes()
-            .all(|b| (0x21..=0x7e).contains(&b))
+            .all(|b| (0x20..=0x7e).contains(&b))
         || hello.client_display_name.is_empty()
         || hello.client_display_name.chars().any(char::is_control)
     {

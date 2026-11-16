@@ -26,6 +26,18 @@ fn hello_negotiates_limits_and_preserves_untrusted_metadata_without_debug_leaks(
     .unwrap();
     assert_eq!(result.limits().operations(), 8);
     assert!(validate_server_hello(&bytes, &result).is_err());
+    let mut printable = hello();
+    let Some(wire::client_envelope::Payload::ClientHello(inner)) = printable.payload.as_mut()
+    else {
+        panic!()
+    };
+    inner.build_identifier = " build ~".into();
+    assert_eq!(
+        validate_client_hello(&printable.encode_to_vec(), true, Limits::HARD)
+            .unwrap()
+            .build_identifier(),
+        " build ~"
+    );
 }
 
 #[test]
