@@ -1,0 +1,1086 @@
+{
+  "file": [
+    {
+      "name": "tether/control/v1/control.proto",
+      "package": "tether.control.v1",
+      "messageType": [
+        {
+          "name": "ClientEnvelope",
+          "field": [
+            {
+              "name": "protocol_major",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "protocolMajor"
+            },
+            {
+              "name": "protocol_minor",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "protocolMinor"
+            },
+            {
+              "name": "sequence",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "sequence"
+            },
+            {
+              "name": "session_epoch",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "sessionEpoch"
+            },
+            {
+              "name": "client_timestamp_micros",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "clientTimestampMicros"
+            },
+            {
+              "name": "client_hello",
+              "number": 10,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ClientHello",
+              "oneofIndex": 0,
+              "jsonName": "clientHello"
+            },
+            {
+              "name": "operation_batch",
+              "number": 11,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ClientOperationBatch",
+              "oneofIndex": 0,
+              "jsonName": "operationBatch"
+            },
+            {
+              "name": "heartbeat_ping",
+              "number": 12,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.HeartbeatPing",
+              "oneofIndex": 0,
+              "jsonName": "heartbeatPing"
+            },
+            {
+              "name": "client_leaving",
+              "number": 13,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ClientLeaving",
+              "oneofIndex": 0,
+              "jsonName": "clientLeaving"
+            }
+          ],
+          "oneofDecl": [{ "name": "payload" }],
+          "reservedRange": [{ "start": 6, "end": 10 }]
+        },
+        {
+          "name": "ServerEnvelope",
+          "field": [
+            {
+              "name": "protocol_major",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "protocolMajor"
+            },
+            {
+              "name": "protocol_minor",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "protocolMinor"
+            },
+            {
+              "name": "sequence",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "sequence"
+            },
+            {
+              "name": "session_epoch",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "sessionEpoch"
+            },
+            {
+              "name": "server_hello",
+              "number": 10,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ServerHello",
+              "oneofIndex": 0,
+              "jsonName": "serverHello"
+            },
+            {
+              "name": "heartbeat_pong",
+              "number": 11,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.HeartbeatPong",
+              "oneofIndex": 0,
+              "jsonName": "heartbeatPong"
+            },
+            {
+              "name": "capability_snapshot",
+              "number": 12,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.CapabilitySnapshot",
+              "oneofIndex": 0,
+              "jsonName": "capabilitySnapshot"
+            },
+            {
+              "name": "control_state",
+              "number": 13,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ControlState",
+              "oneofIndex": 0,
+              "jsonName": "controlState"
+            },
+            {
+              "name": "protocol_error",
+              "number": 14,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ProtocolError",
+              "oneofIndex": 0,
+              "jsonName": "protocolError"
+            }
+          ],
+          "oneofDecl": [{ "name": "payload" }],
+          "reservedRange": [{ "start": 5, "end": 10 }]
+        },
+        {
+          "name": "ClientHello",
+          "field": [
+            {
+              "name": "protocol_major",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "protocolMajor"
+            },
+            {
+              "name": "minimum_protocol_minor",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "minimumProtocolMinor"
+            },
+            {
+              "name": "maximum_protocol_minor",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumProtocolMinor"
+            },
+            {
+              "name": "build_identifier",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_STRING",
+              "jsonName": "buildIdentifier"
+            },
+            {
+              "name": "client_display_name",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_STRING",
+              "jsonName": "clientDisplayName"
+            },
+            {
+              "name": "limits",
+              "number": 6,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ClientLimits",
+              "jsonName": "limits"
+            },
+            {
+              "name": "capabilities",
+              "number": 7,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.ClientCapability",
+              "jsonName": "capabilities"
+            }
+          ],
+          "reservedRange": [{ "start": 8, "end": 16 }]
+        },
+        {
+          "name": "ClientLimits",
+          "field": [
+            {
+              "name": "maximum_encoded_message_bytes",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumEncodedMessageBytes"
+            },
+            {
+              "name": "maximum_operations_per_batch",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumOperationsPerBatch"
+            },
+            {
+              "name": "maximum_text_operation_bytes",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumTextOperationBytes"
+            }
+          ]
+        },
+        {
+          "name": "ServerHello",
+          "field": [
+            {
+              "name": "selected_protocol_major",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "selectedProtocolMajor"
+            },
+            {
+              "name": "selected_protocol_minor",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "selectedProtocolMinor"
+            },
+            {
+              "name": "connection_identifier",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BYTES",
+              "jsonName": "connectionIdentifier"
+            },
+            {
+              "name": "heartbeat_interval_millis",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "heartbeatIntervalMillis"
+            },
+            {
+              "name": "heartbeat_timeout_millis",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "heartbeatTimeoutMillis"
+            },
+            {
+              "name": "limits",
+              "number": 6,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ProtocolLimits",
+              "jsonName": "limits"
+            },
+            {
+              "name": "capabilities",
+              "number": 7,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.CapabilitySnapshot",
+              "jsonName": "capabilities"
+            },
+            {
+              "name": "control_state",
+              "number": 8,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ControlState",
+              "jsonName": "controlState"
+            }
+          ],
+          "reservedRange": [{ "start": 9, "end": 16 }]
+        },
+        {
+          "name": "ProtocolLimits",
+          "field": [
+            {
+              "name": "maximum_encoded_message_bytes",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumEncodedMessageBytes"
+            },
+            {
+              "name": "maximum_operations_per_batch",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumOperationsPerBatch"
+            },
+            {
+              "name": "maximum_text_operation_bytes",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumTextOperationBytes"
+            },
+            {
+              "name": "maximum_text_bytes_per_batch",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumTextBytesPerBatch"
+            },
+            {
+              "name": "maximum_absolute_fixed_delta",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumAbsoluteFixedDelta"
+            },
+            {
+              "name": "maximum_atomic_click_count",
+              "number": 6,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "maximumAtomicClickCount"
+            }
+          ]
+        },
+        {
+          "name": "ClientOperationBatch",
+          "field": [
+            {
+              "name": "operations",
+              "number": 1,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ClientOperation",
+              "jsonName": "operations"
+            }
+          ]
+        },
+        {
+          "name": "ClientOperation",
+          "field": [
+            {
+              "name": "timestamp_offset_micros",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "timestampOffsetMicros"
+            },
+            {
+              "name": "pointer_move",
+              "number": 10,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.PointerMove",
+              "oneofIndex": 0,
+              "jsonName": "pointerMove"
+            },
+            {
+              "name": "scroll",
+              "number": 11,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.Scroll",
+              "oneofIndex": 0,
+              "jsonName": "scroll"
+            },
+            {
+              "name": "mouse_button_transition",
+              "number": 12,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.MouseButtonTransition",
+              "oneofIndex": 0,
+              "jsonName": "mouseButtonTransition"
+            },
+            {
+              "name": "mouse_button_click",
+              "number": 13,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.MouseButtonClick",
+              "oneofIndex": 0,
+              "jsonName": "mouseButtonClick"
+            },
+            {
+              "name": "physical_key_transition",
+              "number": 14,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.PhysicalKeyTransition",
+              "oneofIndex": 0,
+              "jsonName": "physicalKeyTransition"
+            },
+            {
+              "name": "text_insertion",
+              "number": 15,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.TextInsertion",
+              "oneofIndex": 0,
+              "jsonName": "textInsertion"
+            },
+            {
+              "name": "text_edit",
+              "number": 16,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.TextEdit",
+              "oneofIndex": 0,
+              "jsonName": "textEdit"
+            },
+            {
+              "name": "logical_command",
+              "number": 17,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.LogicalCommandAction",
+              "oneofIndex": 0,
+              "jsonName": "logicalCommand"
+            },
+            {
+              "name": "media_command",
+              "number": 18,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.MediaCommandAction",
+              "oneofIndex": 0,
+              "jsonName": "mediaCommand"
+            },
+            {
+              "name": "request_control",
+              "number": 19,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.RequestControl",
+              "oneofIndex": 0,
+              "jsonName": "requestControl"
+            },
+            {
+              "name": "relinquish_control",
+              "number": 20,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.RelinquishControl",
+              "oneofIndex": 0,
+              "jsonName": "relinquishControl"
+            },
+            {
+              "name": "release_all",
+              "number": 21,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ReleaseAll",
+              "oneofIndex": 0,
+              "jsonName": "releaseAll"
+            }
+          ],
+          "oneofDecl": [{ "name": "action" }],
+          "reservedRange": [{ "start": 2, "end": 10 }]
+        },
+        {
+          "name": "PointerMove",
+          "field": [
+            {
+              "name": "delta_x_1024",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_SINT32",
+              "jsonName": "deltaX1024"
+            },
+            {
+              "name": "delta_y_1024",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_SINT32",
+              "jsonName": "deltaY1024"
+            }
+          ]
+        },
+        {
+          "name": "Scroll",
+          "field": [
+            {
+              "name": "axis",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.ScrollAxis",
+              "jsonName": "axis"
+            },
+            {
+              "name": "delta_1024",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_SINT32",
+              "jsonName": "delta1024"
+            }
+          ]
+        },
+        {
+          "name": "MouseButtonTransition",
+          "field": [
+            {
+              "name": "button",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.MouseButton",
+              "jsonName": "button"
+            },
+            {
+              "name": "state",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.TransitionState",
+              "jsonName": "state"
+            }
+          ]
+        },
+        {
+          "name": "MouseButtonClick",
+          "field": [
+            {
+              "name": "button",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.MouseButton",
+              "jsonName": "button"
+            },
+            {
+              "name": "click_count",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "clickCount"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalKey",
+          "field": [
+            {
+              "name": "usage_page",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "usagePage"
+            },
+            {
+              "name": "usage_id",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "usageId"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalKeyTransition",
+          "field": [
+            {
+              "name": "key",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.PhysicalKey",
+              "jsonName": "key"
+            },
+            {
+              "name": "state",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.TransitionState",
+              "jsonName": "state"
+            }
+          ]
+        },
+        {
+          "name": "TextInsertion",
+          "field": [
+            {
+              "name": "text",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_STRING",
+              "jsonName": "text"
+            }
+          ]
+        },
+        {
+          "name": "TextEdit",
+          "field": [
+            {
+              "name": "command",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.TextEditCommand",
+              "jsonName": "command"
+            },
+            {
+              "name": "repeat_count",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "jsonName": "repeatCount"
+            }
+          ]
+        },
+        {
+          "name": "LogicalCommandAction",
+          "field": [
+            {
+              "name": "command",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.LogicalCommand",
+              "jsonName": "command"
+            }
+          ]
+        },
+        {
+          "name": "MediaCommandAction",
+          "field": [
+            {
+              "name": "command",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.MediaCommand",
+              "jsonName": "command"
+            }
+          ]
+        },
+        { "name": "RequestControl" },
+        { "name": "RelinquishControl" },
+        { "name": "ReleaseAll" },
+        {
+          "name": "HeartbeatPing",
+          "field": [
+            {
+              "name": "heartbeat_identifier",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "heartbeatIdentifier"
+            }
+          ]
+        },
+        {
+          "name": "HeartbeatPong",
+          "field": [
+            {
+              "name": "heartbeat_identifier",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "heartbeatIdentifier"
+            }
+          ]
+        },
+        {
+          "name": "ClientLeaving",
+          "field": [
+            {
+              "name": "reason",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.ClientLeavingReason",
+              "jsonName": "reason"
+            }
+          ]
+        },
+        {
+          "name": "CapabilitySnapshot",
+          "field": [
+            {
+              "name": "revision",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "revision"
+            },
+            {
+              "name": "backend_initialized",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "backendInitialized"
+            },
+            {
+              "name": "permission_state",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.PermissionState",
+              "jsonName": "permissionState"
+            },
+            {
+              "name": "user_authorization_required",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "userAuthorizationRequired"
+            },
+            {
+              "name": "pointer_available",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "pointerAvailable"
+            },
+            {
+              "name": "physical_keys_available",
+              "number": 6,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "physicalKeysAvailable"
+            },
+            {
+              "name": "vertical_scroll_available",
+              "number": 7,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "verticalScrollAvailable"
+            },
+            {
+              "name": "horizontal_scroll_available",
+              "number": 8,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "horizontalScrollAvailable"
+            },
+            {
+              "name": "mouse_buttons",
+              "number": 9,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.MouseButton",
+              "jsonName": "mouseButtons"
+            },
+            {
+              "name": "text_modes",
+              "number": 10,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.TextMode",
+              "jsonName": "textModes"
+            },
+            {
+              "name": "logical_commands",
+              "number": 11,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.LogicalCommand",
+              "jsonName": "logicalCommands"
+            },
+            {
+              "name": "media_commands",
+              "number": 12,
+              "label": "LABEL_REPEATED",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.MediaCommand",
+              "jsonName": "mediaCommands"
+            },
+            {
+              "name": "limits",
+              "number": 13,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.ProtocolLimits",
+              "jsonName": "limits"
+            },
+            {
+              "name": "atomic_click_available",
+              "number": 21,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "atomicClickAvailable"
+            }
+          ],
+          "reservedRange": [{ "start": 14, "end": 21 }]
+        },
+        {
+          "name": "ControlState",
+          "field": [
+            {
+              "name": "revision",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "revision"
+            },
+            {
+              "name": "state",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.ControlStateKind",
+              "jsonName": "state"
+            },
+            {
+              "name": "session_epoch",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "sessionEpoch"
+            },
+            {
+              "name": "this_client_controls",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "thisClientControls"
+            }
+          ]
+        },
+        {
+          "name": "ProtocolError",
+          "field": [
+            {
+              "name": "code",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.ProtocolErrorCode",
+              "jsonName": "code"
+            },
+            {
+              "name": "retryable",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_BOOL",
+              "jsonName": "retryable"
+            },
+            {
+              "name": "supported_minimum_minor",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "oneofIndex": 0,
+              "jsonName": "supportedMinimumMinor",
+              "proto3Optional": true
+            },
+            {
+              "name": "supported_maximum_minor",
+              "number": 4,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT32",
+              "oneofIndex": 1,
+              "jsonName": "supportedMaximumMinor",
+              "proto3Optional": true
+            },
+            {
+              "name": "numeric_context",
+              "number": 5,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".tether.control.v1.SafeNumericContext",
+              "jsonName": "numericContext"
+            }
+          ],
+          "oneofDecl": [
+            { "name": "_supported_minimum_minor" },
+            { "name": "_supported_maximum_minor" }
+          ],
+          "reservedRange": [{ "start": 6, "end": 16 }]
+        },
+        {
+          "name": "SafeNumericContext",
+          "field": [
+            {
+              "name": "kind",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_ENUM",
+              "typeName": ".tether.control.v1.NumericContextKind",
+              "jsonName": "kind"
+            },
+            {
+              "name": "observed",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "observed"
+            },
+            {
+              "name": "limit",
+              "number": 3,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_UINT64",
+              "jsonName": "limit"
+            }
+          ]
+        }
+      ],
+      "enumType": [
+        {
+          "name": "ClientCapability",
+          "value": [
+            { "name": "CLIENT_CAPABILITY_UNSPECIFIED", "number": 0 },
+            { "name": "CLIENT_CAPABILITY_ORDERED_OPERATION_BATCHES", "number": 1 },
+            { "name": "CLIENT_CAPABILITY_APPLICATION_HEARTBEAT", "number": 2 },
+            { "name": "CLIENT_CAPABILITY_COMPOSE_TEXT", "number": 3 }
+          ]
+        },
+        {
+          "name": "ScrollAxis",
+          "value": [
+            { "name": "SCROLL_AXIS_UNSPECIFIED", "number": 0 },
+            { "name": "SCROLL_AXIS_VERTICAL", "number": 1 },
+            { "name": "SCROLL_AXIS_HORIZONTAL", "number": 2 }
+          ]
+        },
+        {
+          "name": "MouseButton",
+          "value": [
+            { "name": "MOUSE_BUTTON_UNSPECIFIED", "number": 0 },
+            { "name": "MOUSE_BUTTON_LEFT", "number": 1 },
+            { "name": "MOUSE_BUTTON_RIGHT", "number": 2 },
+            { "name": "MOUSE_BUTTON_MIDDLE", "number": 3 },
+            { "name": "MOUSE_BUTTON_BACK", "number": 4 },
+            { "name": "MOUSE_BUTTON_FORWARD", "number": 5 }
+          ]
+        },
+        {
+          "name": "TransitionState",
+          "value": [
+            { "name": "TRANSITION_STATE_UNSPECIFIED", "number": 0 },
+            { "name": "TRANSITION_STATE_DOWN", "number": 1 },
+            { "name": "TRANSITION_STATE_UP", "number": 2 }
+          ]
+        },
+        {
+          "name": "TextEditCommand",
+          "value": [
+            { "name": "TEXT_EDIT_COMMAND_UNSPECIFIED", "number": 0 },
+            { "name": "TEXT_EDIT_COMMAND_DELETE_BACKWARD", "number": 1 },
+            { "name": "TEXT_EDIT_COMMAND_DELETE_FORWARD", "number": 2 },
+            { "name": "TEXT_EDIT_COMMAND_INSERT_LINE_BREAK", "number": 3 }
+          ]
+        },
+        {
+          "name": "LogicalCommand",
+          "value": [
+            { "name": "LOGICAL_COMMAND_UNSPECIFIED", "number": 0 },
+            { "name": "LOGICAL_COMMAND_COPY", "number": 1 },
+            { "name": "LOGICAL_COMMAND_CUT", "number": 2 },
+            { "name": "LOGICAL_COMMAND_PASTE_SHORTCUT", "number": 3 },
+            { "name": "LOGICAL_COMMAND_UNDO", "number": 4 },
+            { "name": "LOGICAL_COMMAND_REDO", "number": 5 },
+            { "name": "LOGICAL_COMMAND_SELECT_ALL", "number": 6 },
+            { "name": "LOGICAL_COMMAND_SAVE", "number": 7 },
+            { "name": "LOGICAL_COMMAND_FIND", "number": 8 },
+            { "name": "LOGICAL_COMMAND_CLOSE_TAB", "number": 9 },
+            { "name": "LOGICAL_COMMAND_SWITCH_APPLICATION", "number": 10 },
+            { "name": "LOGICAL_COMMAND_TASK_MANAGER_EQUIVALENT", "number": 11 }
+          ]
+        },
+        {
+          "name": "MediaCommand",
+          "value": [
+            { "name": "MEDIA_COMMAND_UNSPECIFIED", "number": 0 },
+            { "name": "MEDIA_COMMAND_PLAY_PAUSE", "number": 1 },
+            { "name": "MEDIA_COMMAND_NEXT_TRACK", "number": 2 },
+            { "name": "MEDIA_COMMAND_PREVIOUS_TRACK", "number": 3 },
+            { "name": "MEDIA_COMMAND_VOLUME_UP", "number": 4 },
+            { "name": "MEDIA_COMMAND_VOLUME_DOWN", "number": 5 },
+            { "name": "MEDIA_COMMAND_MUTE", "number": 6 }
+          ]
+        },
+        {
+          "name": "ClientLeavingReason",
+          "value": [
+            { "name": "CLIENT_LEAVING_REASON_UNSPECIFIED", "number": 0 },
+            { "name": "CLIENT_LEAVING_REASON_USER_DISCONNECT", "number": 1 },
+            { "name": "CLIENT_LEAVING_REASON_PAGE_HIDE", "number": 2 },
+            { "name": "CLIENT_LEAVING_REASON_NAVIGATION", "number": 3 }
+          ]
+        },
+        {
+          "name": "PermissionState",
+          "value": [
+            { "name": "PERMISSION_STATE_UNSPECIFIED", "number": 0 },
+            { "name": "PERMISSION_STATE_NOT_REQUIRED", "number": 1 },
+            { "name": "PERMISSION_STATE_GRANTED", "number": 2 },
+            { "name": "PERMISSION_STATE_DENIED", "number": 3 },
+            { "name": "PERMISSION_STATE_PROMPT_REQUIRED", "number": 4 },
+            { "name": "PERMISSION_STATE_UNAVAILABLE", "number": 5 }
+          ]
+        },
+        {
+          "name": "TextMode",
+          "value": [
+            { "name": "TEXT_MODE_UNSPECIFIED", "number": 0 },
+            { "name": "TEXT_MODE_ACTIVE_LAYOUT_MAPPABLE", "number": 1 },
+            { "name": "TEXT_MODE_NATIVE_UNICODE_BEST_EFFORT", "number": 2 },
+            { "name": "TEXT_MODE_EI_UTF8", "number": 3 }
+          ]
+        },
+        {
+          "name": "ControlStateKind",
+          "value": [
+            { "name": "CONTROL_STATE_KIND_UNSPECIFIED", "number": 0 },
+            { "name": "CONTROL_STATE_KIND_NO_CONTROLLER", "number": 1 },
+            { "name": "CONTROL_STATE_KIND_STANDBY", "number": 2 },
+            { "name": "CONTROL_STATE_KIND_CONTROLLING", "number": 3 },
+            { "name": "CONTROL_STATE_KIND_SUSPENDED", "number": 4 }
+          ]
+        },
+        {
+          "name": "ProtocolErrorCode",
+          "value": [
+            { "name": "PROTOCOL_ERROR_CODE_UNSPECIFIED", "number": 0 },
+            { "name": "PROTOCOL_ERROR_CODE_MALFORMED_MESSAGE", "number": 1 },
+            { "name": "PROTOCOL_ERROR_CODE_MESSAGE_TOO_LARGE", "number": 2 },
+            { "name": "PROTOCOL_ERROR_CODE_INCOMPATIBLE_VERSION", "number": 3 },
+            { "name": "PROTOCOL_ERROR_CODE_UNKNOWN_OR_UNSUPPORTED_OPERATION", "number": 4 },
+            { "name": "PROTOCOL_ERROR_CODE_AUTHENTICATION_REQUIRED", "number": 5 },
+            { "name": "PROTOCOL_ERROR_CODE_NOT_CONTROLLER", "number": 6 },
+            { "name": "PROTOCOL_ERROR_CODE_STALE_EPOCH", "number": 7 },
+            { "name": "PROTOCOL_ERROR_CODE_INVALID_SEQUENCE", "number": 8 },
+            { "name": "PROTOCOL_ERROR_CODE_CAPABILITY_UNAVAILABLE", "number": 9 },
+            { "name": "PROTOCOL_ERROR_CODE_RATE_LIMITED", "number": 10 },
+            { "name": "PROTOCOL_ERROR_CODE_QUEUE_SATURATED", "number": 11 },
+            { "name": "PROTOCOL_ERROR_CODE_BACKEND_UNAVAILABLE", "number": 12 },
+            { "name": "PROTOCOL_ERROR_CODE_SERVER_SUSPENDING", "number": 13 },
+            { "name": "PROTOCOL_ERROR_CODE_INTERNAL_FAILURE", "number": 14 }
+          ]
+        },
+        {
+          "name": "NumericContextKind",
+          "value": [
+            { "name": "NUMERIC_CONTEXT_KIND_UNSPECIFIED", "number": 0 },
+            { "name": "NUMERIC_CONTEXT_KIND_MESSAGE_BYTES", "number": 1 },
+            { "name": "NUMERIC_CONTEXT_KIND_BATCH_OPERATIONS", "number": 2 },
+            { "name": "NUMERIC_CONTEXT_KIND_TEXT_BYTES", "number": 3 },
+            { "name": "NUMERIC_CONTEXT_KIND_RATE", "number": 4 },
+            { "name": "NUMERIC_CONTEXT_KIND_QUEUE_BYTES", "number": 5 }
+          ]
+        }
+      ],
+      "syntax": "proto3",
+      "bufExtension": { "isImport": false, "isSyntaxUnspecified": false }
+    }
+  ]
+}

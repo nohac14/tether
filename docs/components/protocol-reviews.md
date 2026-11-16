@@ -74,3 +74,19 @@ Checks performed:
 
 This approval establishes representability, not native correctness. WIN-003,
 MAC-003, X11-003, and WAY-004 remain mandatory real-platform gates.
+
+## 2026-11-14 PR-002 refinement
+
+Baseline audit A-01 is resolved by explicit `atomic_click_available = 21`.
+Reserved 14–20 stays reserved; the positive maximum click count is a numeric
+limit, not availability. False/omitted fails closed. PR-004 must map the flag
+and button capability, and the dispatcher still rejects an already-held button.
+No cookie/credential, new input operation, clipboard mechanism or major-version
+semantic change is added. This is the primary agent's contract reconciliation,
+not another independent Gemini review.
+
+Buf 1.72.0 format/`STANDARD` lint/build and FILE checks use a frozen initial
+JSON descriptor fixture. Five executable regressions cover pin/host checksum
+validation, current schema, deletion failure, additive compatibility and no
+baseline rewrite. Missing tools, bad checksums and subprocess failure do not
+silently pass. Native runtime and generated-domain behavior are not inferred.

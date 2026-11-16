@@ -282,6 +282,9 @@ message CapabilitySnapshot {
   ProtocolLimits limits = 13;
 
   reserved 14 to 20;
+
+  // Availability is independent of the positive negotiated click-count limit.
+  bool atomic_click_available = 21;
 }
 
 // PermissionState reports availability without exposing platform-native details.

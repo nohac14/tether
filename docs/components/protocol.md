@@ -241,6 +241,14 @@ operation that is no longer supported even if it was valid under an older
 snapshot. The UI disables unsupported functions and never treats a requested
 capability as proof it exists.
 
+`CapabilitySnapshot.atomic_click_available` explicitly reports atomic-click
+availability independently of `limits.maximum_atomic_click_count` (one or two).
+False/omitted is unavailable; a nonzero count never grants the capability.
+The wire-to-domain layer rejects a click unless both that flag and the chosen
+button are supported, and the dispatcher still rejects clicks on held buttons.
+The new field uses number 21, preserving reserved 14–20 rather than reusing a
+reserved number. This resolves baseline audit A-01 without overloading zero.
+
 ## Application-layer heartbeat
 
 Browser JavaScript schedules `HeartbeatPing` approximately once per second while

@@ -1,0 +1,5 @@
+# Protocol byte-comparison gates must survive Windows autocrlf checkouts.
+/crates/protocol/src/generated/*.rs text eol=lf
+/apps/mobile-web/src/protocol/generated/**/*.ts text eol=lf
+/tests/fixtures/protocol/*.json text eol=lf
+/proto/**/*.proto text eol=lf

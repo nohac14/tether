@@ -19,7 +19,11 @@ allow = [
   "Unicode-3.0",
 ]
 confidence-threshold = 0.93
-exceptions = []
+exceptions = [
+  # PR-003: unmodified development-only prost-build -> petgraph -> hashbrown.
+  # Exact Zlib license reviewed; preserve source notice, mark any alterations.
+  { name = "foldhash", version = "=0.1.5", allow = ["Zlib"] },
+]
 
 [licenses.private]
 ignore = true

@@ -13,4 +13,5 @@ Implemented contracts:
 - [`native-backend-spikes.md`](native-backend-spikes.md)
 - [`pairing-lifecycle.md`](pairing-lifecycle.md)
 - [`protocol.md`](protocol.md)
+- [`protocol-generation.md`](protocol-generation.md)
 - [`storage.md`](storage.md)

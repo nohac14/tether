@@ -6,15 +6,24 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+mod protocol_codegen;
+
 const MANUAL_TEST_ACKNOWLEDGEMENT: &str = "I_UNDERSTAND_TETHER_INJECTS_INPUT";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum Task {
     Check,
     Codegen,
+    CheckGenerated,
+    CodegenRust {
+        descriptor: PathBuf,
+        output: PathBuf,
+    },
     Fixtures,
     Help,
-    ManualTestGuard { scope: String },
+    ManualTestGuard {
+        scope: String,
+    },
     PackagePreflight,
 }
 
@@ -121,6 +130,11 @@ fn parse_task(arguments: &[OsString]) -> Result<Task, TaskError> {
     match command {
         "check" => require_no_more_arguments(arguments, Task::Check),
         "codegen" => require_no_more_arguments(arguments, Task::Codegen),
+        "check-generated" => require_no_more_arguments(arguments, Task::CheckGenerated),
+        "codegen-rust" if arguments.len() == 3 => Ok(Task::CodegenRust {
+            descriptor: PathBuf::from(&arguments[1]),
+            output: PathBuf::from(&arguments[2]),
+        }),
         "fixtures" => require_no_more_arguments(arguments, Task::Fixtures),
         "help" | "--help" | "-h" => require_no_more_arguments(arguments, Task::Help),
         "manual-test-guard" => {
@@ -205,6 +219,14 @@ fn check_commands() -> &'static [CommandSpec] {
         },
         CommandSpec {
             program: "pnpm",
+            arguments: &["check:protocol"],
+        },
+        CommandSpec {
+            program: "pnpm",
+            arguments: &["check:generated"],
+        },
+        CommandSpec {
+            program: "pnpm",
             arguments: &["check:eslint"],
         },
         CommandSpec {
@@ -250,14 +272,18 @@ fn require_path(root: &Path, relative_path: &str) -> Result<(), TaskError> {
     }
 }
 
-fn run_codegen(root: &Path, runner: &mut impl Runner) -> Result<(), TaskError> {
+fn run_codegen(root: &Path, runner: &mut impl Runner, check: bool) -> Result<(), TaskError> {
     require_path(root, "proto/buf.yaml")?;
     require_path(root, "proto/buf.gen.yaml")?;
     runner.run(
         root,
         &CommandSpec {
-            program: "buf",
-            arguments: &["generate", "proto"],
+            program: "node",
+            arguments: if check {
+                &["tooling/generate-protocol.mjs", "--check"]
+            } else {
+                &["tooling/generate-protocol.mjs", "--write"]
+            },
         },
     )
 }
@@ -325,6 +351,7 @@ Tether repository tasks
 
   cargo xtask check
   cargo xtask codegen
+  cargo xtask check-generated
   cargo xtask fixtures
   cargo xtask package-preflight
   cargo xtask manual-test-guard <scope>
@@ -342,7 +369,10 @@ fn execute(
 ) -> Result<(), TaskError> {
     match task {
         Task::Check => run_commands(root, runner, check_commands()),
-        Task::Codegen => run_codegen(root, runner),
+        Task::Codegen => run_codegen(root, runner, false),
+        Task::CheckGenerated => run_codegen(root, runner, true),
+        Task::CodegenRust { descriptor, output } => protocol_codegen::generate(descriptor, output)
+            .map_err(|_| TaskError::InvalidArguments("Rust protocol generation failed".to_owned())),
         Task::Fixtures => run_fixtures(root, runner),
         Task::Help => {
             print_help();
@@ -414,6 +444,10 @@ mod tests {
     fn parses_all_fixed_commands() {
         assert_eq!(parse_task(&arguments(&["check"])), Ok(Task::Check));
         assert_eq!(parse_task(&arguments(&["codegen"])), Ok(Task::Codegen));
+        assert_eq!(
+            parse_task(&arguments(&["check-generated"])),
+            Ok(Task::CheckGenerated)
+        );
         assert_eq!(parse_task(&arguments(&["fixtures"])), Ok(Task::Fixtures));
         assert_eq!(
             parse_task(&arguments(&["package-preflight"])),
@@ -520,7 +554,7 @@ mod tests {
         let mut runner = RecordingRunner::default();
         let missing_root = Path::new("/definitely/not/a/tether/workspace");
         assert!(matches!(
-            run_codegen(missing_root, &mut runner),
+            run_codegen(missing_root, &mut runner, false),
             Err(TaskError::MissingPath(_))
         ));
         assert_eq!(runner.commands, Vec::<CommandSpec>::new());
