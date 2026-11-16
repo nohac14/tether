@@ -73,6 +73,12 @@ checks pass and do not replace that failure. WB-001 qualifies cargo-xwin/LLVM
 tools but is blocked on R-023 Microsoft manifest digest mismatches. No SDK,
 NSIS installer or Windows executable is claimed. See the
 [dated checkpoint](manual-tests/2026-11-14-protocol-tooling.md).
+
+On 2026-11-16 normal Git approvals succeeded. PR-003 is now committed as
+`a5a8da0`, and PR-004 is ready. The
+[commit verification record](manual-tests/2026-11-16-git-protocol-commit.md)
+distinguishes the isolated committed snapshot from older unstaged platform
+work. No push or global dependency-security waiver occurred.
 **Delivery target:** The complete production application in `SPEC.md`; no task
 authorizes a disposable transport, backend, or MVP substitute.
 
@@ -128,8 +134,8 @@ prerequisite to this personal-use path and not an inferred pass.
 | --- | --- | --- | --- |
 | PR-001 | DONE | A-003, F-001 | Added the accepted `docs/components/protocol.md` contract for transport, envelopes, ordering, negotiation, capabilities, epoch/sequence/timing, JavaScript heartbeats, safe errors/close codes, canonical input identities, hard limits, and compatibility. Separate security and native-backend review passes are recorded in `protocol-reviews.md`; they approve schema work without claiming independent, executable, or hardware validation. Local-link validation passed. |
 | PR-002 | DONE | PR-001, F-003 | Initial schema, direction-specific envelopes, reserved ranges, ordered actions, negotiation/capabilities and safe error shapes are complete. On 2026-11-14 resolved audit A-01 with explicit atomic-click availability at field 21, retaining reserved 14–20 and positive count semantics. Added the frozen initial JSON descriptor FILE baseline, official per-host Buf 1.72.0 checksums, bounded offline/local gate and five real regressions: deletion fails, addition passes, baseline unchanged, tool failures are fatal. Pinned Node/Buf aggregate passes with 214 Rust, 24 Vitest and four Node tests; strict all-feature Rust checks/build/docs pass. New unrelated npm advisory R-022 is recorded, not suppressed. No generated protocol/domain/runtime implementation is claimed. |
-| PR-003 | IN PROGRESS | PR-002 | Implementation and local verification complete: exact prost family 0.14.6, syn 3.0.7, protobuf-es 2.17.0; generated Rust/TS in the worktree; offline scratch diff, redacted diagnostics, bounded/symlink/stale/missing/extra-output and LF-checkout checks, Rust/TS round trips. Final aggregate passes with 220 Rust/38 Vitest/four Node tests; all-feature strict Clippy/build/docs and Windows-target static checks pass. One owner-approved generated CapabilitySnapshot expectation only. Required generated-source Git commit remains blocked by the managed read-only .git grant; manual focused staging commands are in the checkpoint. Full-graph R-019 remains open, not waived. No PR-004/005 claim. |
-| PR-004 | BLOCKED | PR-003, F-006 | Implement wire-to-domain validation: enum checks, numeric bounds, UTF-8/name/text sizes, capability checks, session/version checks, and safe error mapping. Fuzz/proptest malformed envelopes. |
+| PR-003 | DONE | PR-002 | Committed as a5a8da0 on 2026-11-16: exact prost family 0.14.6, syn 3.0.7, protobuf-es 2.17.0; generated Rust/TS; offline scratch diff, redacted diagnostics, bounded/symlink/stale/missing/extra-output and LF/EOF checks, Rust/TS round trips. Full worktree aggregate passes with 220 Rust/38 Vitest/four Node tests. An isolated staged snapshot independently passes 124 Rust/29 Vitest/four Node tests, strict all-feature Clippy/build and frozen install, excluding older unstaged Mac/network work. One owner-approved generated CapabilitySnapshot expectation only. No Git permission bypass or push; no PR-004/005 claim. Full-graph R-019 still fails and is not waived. See the 2026-11-16 commit checkpoint. |
+| PR-004 | READY | PR-003, F-006 | Implement wire-to-domain validation: enum checks, numeric bounds, UTF-8/name/text sizes, capability checks, session/version checks, and safe error mapping. Fuzz/proptest malformed envelopes. No implementation yet. |
 | PR-005 | BLOCKED | PR-003, PR-004 | Create Rust↔TypeScript golden fixtures for every message family, unknown enum values, unknown fields, maximum sizes, and incompatible versions. Run in both toolchains in CI. |
 
 ## Wave 3 — Input core and fail-safe session model

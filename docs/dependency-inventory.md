@@ -320,6 +320,29 @@ remediation are preserved in `reviews/2026-10-16-npm-tooling-findings.md`.
 
 ## Tool execution record
 
+### 2026-11-16 isolated protocol commit
+
+Protocol generation is committed in `a5a8da0`; local staging/commit access used
+the normal approval flow, without changing `.git` permissions or pushing.
+The staged-only Cargo graph was resolved offline with normal Cargo tooling:
+exactly the 17 reviewed protocol additions, with every registry version/checksum
+unchanged from the reviewed worktree lockfile. Older unstaged Mac/network/probe
+dependencies were not swept into that commit.
+
+The isolated snapshot independently passes its aggregate (124 Rust, 29 Vitest,
+four Node tests), strict all-feature Clippy/tests/builds, frozen scripts-disabled
+npm installation and secret/whitespace checks. The larger worktree aggregate
+passes 220 Rust/38 Vitest/four Node tests. Initial offline npm installation lacked
+supply-chain metadata; approved official-registry metadata/package acquisition
+resolved that failure without a lockfile change or disabled policy check.
+No dependency version was changed in this Git batch. Generated TypeScript EOF
+is now normalized reproducibly to satisfy staged whitespace checks.
+
+The isolated full-graph cargo-deny 0.20.2 result still fails R-019's three known
+Wayland maintenance advisories; bans/licenses/sources pass. No new native
+Windows, browser/device, installer or SDK provenance result is inferred. See
+the [commit checkpoint](manual-tests/2026-11-16-git-protocol-commit.md).
+
 ### 2026-11-14 protocol tool and Windows build preparation
 
 Buf 1.72.0's official Darwin-arm64 standalone executable was downloaded again

@@ -1,6 +1,6 @@
 # Current implementation and validation matrix
 
-**Date:** 2026-11-14
+**Date:** 2026-11-16
 
 **Release claim:** None. The complete Tether application is not yet built or
 validated end to end. Availability, compilation, inert tests, and a successful
@@ -11,6 +11,11 @@ with Linux work deferred. The owner accepts untested Windows development
 artifacts and approved cross-build tool acquisition, not a Windows support claim
 or R-018 waiver. No Windows executable has been produced by this priority
 change; earlier runtime evidence in this matrix retains its recorded date.
+
+The shared protocol/generation snapshot is now committed as `a5a8da0` and passes
+independent staged-snapshot checks. The
+[Git checkpoint](../manual-tests/2026-11-16-git-protocol-commit.md) records exact
+scopes; no platform's native validation status changes from that result.
 
 | Configuration | Implemented / compiled evidence | Physical/runtime evidence | Remaining boundary |
 | --- | --- | --- | --- |

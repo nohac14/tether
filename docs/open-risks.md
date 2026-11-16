@@ -1,7 +1,7 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-11-14
+**Last reviewed:** 2026-11-16
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
@@ -50,6 +50,13 @@ is deferred; R-019 is retained rather than suppressed or reported resolved.
 | R-018 | Release blocker | Open | Rust standard filesystem APIs provide the required lifetime locking and replacement primitives on current Windows, but do not expose explicit owner DACL construction or complete reparse/hard-link inspection. ST-002 and ST-003 therefore fail closed on Windows rather than accepting inherited ACLs as compliant. | Select and security-review a maintained safe Windows ACL/reparse implementation or approve a narrowly isolated audited Windows FFI boundary; cross-compile it and validate owner/System/Administrators access, broad-inheritance removal, reparse/hard-link attacks, lock contention, settings/identity replacement, power-loss recovery, reset, and upgrade behavior on actual Windows 11 before enabling persistent state. | ST-002/ST-003 Windows follow-up, IT-004, PK-001 |
 
 ## 2026-11-14 tooling security refresh
+
+The [2026-11-16 Git checkpoint](manual-tests/2026-11-16-git-protocol-commit.md)
+closes the PR-003 local-commit blocker through normal approved Git operations.
+It does not close R-018/R-023 or native support gates. The isolated committed
+dependency graph was checked again and still fails only the same three R-019
+advisories; bans/licenses/sources pass. No ignore or Linux dependency removal
+was introduced.
 
 R-023 — **Windows cross-build acquisition blocker, open 2026-11-14:**
 official VS 17 release and VS 18 stable channel metadata both advertise a

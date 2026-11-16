@@ -1,5 +1,10 @@
 # Windows-first protocol/tooling checkpoint — 2026-11-14
 
+This is the historical November 14 record. The
+[November 16 follow-up](2026-11-16-git-protocol-commit.md) records restored local
+Git approval, completed commits and new verification. The manual handoff below
+is retained as history, not an instruction to repeat completed commits.
+
 ## Scope and authority
 
 ADR 0004 implements the owner's Windows 11 x86-64 first priority, Mac second,
