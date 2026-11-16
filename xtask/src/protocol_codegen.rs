@@ -33,10 +33,11 @@ pub fn generate(descriptor: &Path, output: &Path) -> GenerationResult<()> {
         "#[expect(clippy::struct_excessive_bools, reason = \"Approved independent protobuf capability flags\")]",
     );
     // Buf provides the descriptor; this does not find/download/execute protoc.
-    config.compile_fds(descriptors)?;
+    config.compile_fds(descriptors.clone())?;
     let path = output.join("tether.control.v1.rs");
     let mut source = normalize_generated(&fs::read_to_string(&path)?);
     append_redacted_debug(&mut source)?;
+    crate::protocol_policy::append(&descriptors, &mut source)?;
     fs::write(path, source)?;
     Ok(())
 }

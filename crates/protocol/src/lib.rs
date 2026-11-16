@@ -4,6 +4,9 @@
 //! authorization. PR-004 owns that separate admission boundary. Never log wire
 //! data or use raw generated decoding as permission to execute input.
 
+mod preflight;
+pub mod validation;
+
 /// Reproducibly generated, unvalidated version-one wire representation.
 pub mod wire {
     include!("generated/tether.control.v1.rs");

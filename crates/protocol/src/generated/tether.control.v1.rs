@@ -1137,3 +1137,744 @@ impl ::core::fmt::Debug for NumericContextKind {
         f.write_str("WireMessage(<redacted>)")
     }
 }
+pub(crate) const CLIENT_ROOT: usize = 0;
+pub(crate) const SERVER_ROOT: usize = 1;
+pub(crate) const GUARD_POLICIES: &[crate::preflight::Policy] = &[
+    crate::preflight::Policy {
+        closed: true,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 10,
+                kind: crate::preflight::Kind::Message(2),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 11,
+                kind: crate::preflight::Kind::Message(6),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 12,
+                kind: crate::preflight::Kind::Message(21),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 13,
+                kind: crate::preflight::Kind::Message(23),
+                repeated: 0,
+                union: true,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: true,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 10,
+                kind: crate::preflight::Kind::Message(4),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 11,
+                kind: crate::preflight::Kind::Message(22),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 12,
+                kind: crate::preflight::Kind::Message(24),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 13,
+                kind: crate::preflight::Kind::Message(25),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 14,
+                kind: crate::preflight::Kind::Message(26),
+                repeated: 0,
+                union: true,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::String(64),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::String(128),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 6,
+                kind: crate::preflight::Kind::Message(3),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 7,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3]),
+                repeated: 3,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::Bytes(16),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 6,
+                kind: crate::preflight::Kind::Message(5),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 7,
+                kind: crate::preflight::Kind::Message(24),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 8,
+                kind: crate::preflight::Kind::Message(25),
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 6,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::Message(7),
+            repeated: 256,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: true,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 10,
+                kind: crate::preflight::Kind::Message(8),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 11,
+                kind: crate::preflight::Kind::Message(9),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 12,
+                kind: crate::preflight::Kind::Message(10),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 13,
+                kind: crate::preflight::Kind::Message(11),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 14,
+                kind: crate::preflight::Kind::Message(13),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 15,
+                kind: crate::preflight::Kind::Message(14),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 16,
+                kind: crate::preflight::Kind::Message(15),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 17,
+                kind: crate::preflight::Kind::Message(16),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 18,
+                kind: crate::preflight::Kind::Message(17),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 19,
+                kind: crate::preflight::Kind::Message(18),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 20,
+                kind: crate::preflight::Kind::Message(19),
+                repeated: 0,
+                union: true,
+            },
+            crate::preflight::Field {
+                number: 21,
+                kind: crate::preflight::Kind::Message(20),
+                repeated: 0,
+                union: true,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::S32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::S32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::S32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2]),
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Message(12),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2]),
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::String(4096),
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5, 6]),
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::U64,
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::U64,
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[crate::preflight::Field {
+            number: 1,
+            kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3]),
+            repeated: 0,
+            union: false,
+        }],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 6,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 7,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 8,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 9,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5]),
+                repeated: 5,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 10,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3]),
+                repeated: 3,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 11,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+                repeated: 11,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 12,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5, 6]),
+                repeated: 6,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 13,
+                kind: crate::preflight::Kind::Message(5),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 21,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+                ]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::Bool,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 4,
+                kind: crate::preflight::Kind::U32,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 5,
+                kind: crate::preflight::Kind::Message(27),
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+    crate::preflight::Policy {
+        closed: false,
+        fields: &[
+            crate::preflight::Field {
+                number: 1,
+                kind: crate::preflight::Kind::Enum(&[0, 1, 2, 3, 4, 5]),
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 2,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+            crate::preflight::Field {
+                number: 3,
+                kind: crate::preflight::Kind::U64,
+                repeated: 0,
+                union: false,
+            },
+        ],
+    },
+];

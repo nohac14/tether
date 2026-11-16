@@ -763,6 +763,8 @@ name = "tether-protocol"
 version = "0.1.0"
 dependencies = [
  "prost",
+ "tether-input-core",
+ "tether-test-support",
 ]
 
 [[package]]

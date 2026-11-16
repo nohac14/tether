@@ -82,6 +82,13 @@ redaction coverage; strict workspace Clippy remains enabled.
 
 ## Verification scope
 
+PR-004 also derives private structural-admission metadata from the same checked
+descriptor into the existing generated Rust file. No schema, frozen baseline or
+TypeScript wire shape changes. Unknown descriptor kinds, negative enum
+definitions, excessive shapes and multiple real unions require guard review
+rather than silent generation. Synthetic proto3-optional presence is distinct
+from real oneofs. See [protocol validation](protocol-validation.md).
+
 Rust and TypeScript tests cover UTF-8, full-width counters, both atomic-click
 availability values with positive limits, truncated decoding, absent oneofs and
 unknown enum retention without claiming domain acceptance. Generation tests

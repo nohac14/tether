@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 mod protocol_codegen;
+mod protocol_policy;
 
 const MANUAL_TEST_ACKNOWLEDGEMENT: &str = "I_UNDERSTAND_TETHER_INJECTS_INPUT";
 

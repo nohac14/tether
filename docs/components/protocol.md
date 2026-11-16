@@ -165,8 +165,11 @@ position between barriers. State-changing operations are never silently
 dropped. On saturation, a release operation uses the reserved control path:
 discard safe queued motion, stop normal admission, neutralize state, and close
 or explicitly resynchronize. `ReleaseAll` terminates processing of later
-operations in its batch; PR-002 validation rejects a batch that places another
-operation after it.
+operations in its batch; PR-004 validation rejects a batch that places another
+operation after it. Request-control and relinquish-control also terminate a
+batch: later input must wait for the actor's resulting ownership/epoch state.
+The [wire-to-domain contract](protocol-validation.md) defines bounded structural
+preflight and semantic admission; generated decoding alone is not validation.
 
 ## Canonical input identities
 
