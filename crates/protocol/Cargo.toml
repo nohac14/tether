@@ -10,6 +10,7 @@ prost = { version = "=0.14.6", default-features = false, features = ["derive", "
 tether-input-core = { version = "=0.1.0", path = "../input-core" }
 
 [dev-dependencies]
+serde_json = "=1.0.151"
 tether-test-support = { version = "=0.1.0", path = "../test-support" }
 
 [lints]

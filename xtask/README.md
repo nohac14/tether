@@ -5,7 +5,9 @@ Run tasks from the repository root with `cargo xtask <command>`.
 - `check` runs non-destructive Rust and web quality gates; it never runs native
   input injection.
 - `codegen` requires the reviewed Buf configuration created by PR-002.
-- `fixtures` requires the fixture manifest and generator created by PR-005.
+- `fixtures` runs PR-005's explicit locked/offline synthetic corpus writer after
+  checking its manifest. Normal `check` verifies both language suites without
+  rewriting any golden or the frozen Buf compatibility baseline.
 - `package-preflight` verifies the repository inputs required before packaging
   work; packaging tasks will extend it with platform-specific checks.
 - `manual-test-guard <scope>` only validates the explicit acknowledgement and

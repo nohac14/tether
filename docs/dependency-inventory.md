@@ -18,7 +18,7 @@ The graph was enumerated with `cargo metadata --format-version 1 --locked`.
 | `libc` | 0.2.190 | MIT OR Apache-2.0 | Target-gated system API bindings used by `getrandom`; approved. |
 | `r-efi` | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | Target-gated UEFI entropy support; accepted under the MIT/Apache alternatives and not built for current desktop targets. |
 | `serde` | 1.0.229 | MIT OR Apache-2.0 | Direct typed serialization API for versioned local settings; approved. |
-| `serde_json` | 1.0.151 | MIT OR Apache-2.0 | Direct maintained strict JSON parser/serializer; approved with exact typed envelopes and byte ceilings. |
+| `serde_json` | 1.0.151 | MIT OR Apache-2.0 | Direct maintained strict JSON parser/serializer; approved with exact typed envelopes and byte ceilings. PR-005 also reuses this exact reviewed version as a protocol dev-dependency for synthetic fixtures, not a new runtime dependency. |
 | `serde_core` | 1.0.229 | MIT OR Apache-2.0 | Serde traits transitive; approved. |
 | `serde_derive` | 1.0.229 | MIT OR Apache-2.0 | Serde procedural macros; build-time code, approved for closed storage types. |
 | `proc-macro2` | 1.0.107 | MIT OR Apache-2.0 | Procedural-macro token support; transitive, approved. |

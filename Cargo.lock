@@ -763,6 +763,7 @@ name = "tether-protocol"
 version = "0.1.0"
 dependencies = [
  "prost",
+ "serde_json",
  "tether-input-core",
  "tether-test-support",
 ]

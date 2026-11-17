@@ -301,6 +301,8 @@ fn run_fixtures(root: &Path, runner: &mut impl Runner) -> Result<(), TaskError> 
                 "tether-protocol",
                 "--test",
                 "fixture_generation",
+                "--locked",
+                "--offline",
                 "--",
                 "--ignored",
                 "--exact",
@@ -559,6 +561,33 @@ mod tests {
             Err(TaskError::MissingPath(_))
         ));
         assert_eq!(runner.commands, Vec::<CommandSpec>::new());
+    }
+
+    #[test]
+    fn fixture_updates_select_only_explicit_locked_offline_writer() {
+        let root = find_workspace_root(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+        let mut runner = RecordingRunner::default();
+        run_fixtures(&root, &mut runner).unwrap();
+        assert_eq!(runner.commands.len(), 1);
+        assert_eq!(
+            runner.commands[0],
+            CommandSpec {
+                program: "cargo",
+                arguments: &[
+                    "test",
+                    "-p",
+                    "tether-protocol",
+                    "--test",
+                    "fixture_generation",
+                    "--locked",
+                    "--offline",
+                    "--",
+                    "--ignored",
+                    "--exact",
+                    "generate_fixtures"
+                ],
+            }
+        );
     }
 
     #[test]

@@ -17,6 +17,11 @@ independent staged-snapshot checks. The
 [Git checkpoint](../manual-tests/2026-11-16-git-protocol-commit.md) records exact
 scopes; no platform's native validation status changes from that result.
 
+PR-004 wire admission and SS-001's written session model are committed separately.
+PR-005 adds local two-language fixture verification, not a session runtime,
+browser compatibility, Windows execution or remote CI result. Its required CI
+execution remains pending; no support row is promoted by these fixtures.
+
 | Configuration | Implemented / compiled evidence | Physical/runtime evidence | Remaining boundary |
 | --- | --- | --- | --- |
 | Owner's Apple Silicon Mac, macOS 15.7.5 (24G624), arm64 | Shared foundations, partial live Quartz backend, interface policy/provider and listener supervisor; accepted ADR 0003 native Bonjour boundary with SDK/inert tests and a guarded diagnostic | Prior no-post/Unix/inventory/loopback checks plus separately approved en0/TCP 54322 registration, exact local A/AAAA/SRV/TXT, browse add/removal and repeated graceful listener cleanup | No production LAN host, native input application matrix, packet containment, real conflicts/flaps/permission denial, phone discovery, finished UI/media or complete app; DS-002 remains in progress and packaged/privacy/signing gates remain open |
