@@ -68,3 +68,19 @@ ASCII space (0x20) in the contract's printable-ASCII range. A regression accepts
 both the lower printable endpoint and `~`; controls remain rejected. Component
 formatting, strict all-target Clippy, 24 protocol tests and all-target builds
 were rerun and passed. No wire/schema or product decision changed.
+
+## SS-001 contract boundary
+
+After PR-004 (`c2e0281`) and the printable-ASCII correction (`49c87e8`),
+SS-001's written [session-safety model](../components/session-safety.md) defines
+the complete internal state/transition policy and scoped/global release-trigger
+table. It preserves the existing dispatcher ownership/fault latch and network
+budgets. In particular, pending down/up actions require a private admission
+projection distinct from confirmed native state. A Rustdoc clarification and
+protocol-contract link record that distinction; no actor runtime was added.
+
+Documentation gates passed: Markdown lint, Prettier, 93-document local-link
+check, Rust formatting, full-worktree whitespace and secret scanning (227 text
+files, zero binary skips). SS-002/003/004 retain the actual reducer, concurrency,
+heartbeat and fault-injection test gates; no future tests are represented as
+having run. This is an internal contract review, not an independent Gemini audit.

@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 use std::fmt;
 use tether_input_core as input;
 
-/// Caller-owned authoritative held state. Validation only clones this snapshot.
+/// Caller-owned ordered held-state expectation, possibly an admission projection.
+/// This is not proof of native execution. Validation only clones the snapshot.
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct HeldState {
     pub buttons: BTreeSet<input::MouseButton>,

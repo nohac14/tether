@@ -19,6 +19,8 @@ structural preflight, prost decode, then whole-envelope semantic validation.
 There is no successful prefix of an invalid batch. A private temporary held-state
 projection checks transitions without changing the caller's ledger. Only actual
 successful dispatcher execution can update the future actor's authoritative ledger.
+Pending ordered work needs a separate admission projection, not a stale completed
+ledger; failures invalidate dependent work. See [session safety](session-safety.md).
 
 ## Structural preflight
 
