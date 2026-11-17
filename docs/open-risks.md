@@ -51,6 +51,15 @@ is deferred; R-019 is retained rather than suppressed or reported resolved.
 
 ## 2026-11-14 tooling security refresh
 
+The November 16 [protocol fixtures](manual-tests/2026-11-16-protocol-fixtures.md)
+and [session prerequisites](manual-tests/2026-11-16-session-prerequisites.md)
+provide partial R-016 evidence: bounded wire validation, two-language synthetic
+boundary/malformed fixtures and non-waiting receipt inspection. They do not close
+R-016: the session actor, reserved delivery under full-system load and native
+neutralization still need their SS/NW/IT gates. Pending/failed cleanup is never
+treated as neutral, and a later successful release never clears terminal faults.
+R-018/R-019/R-023 and every native/browser support boundary remain unchanged.
+
 The [2026-11-16 Git checkpoint](manual-tests/2026-11-16-git-protocol-commit.md)
 closes the PR-003 local-commit blocker through normal approved Git operations.
 It does not close R-018/R-023 or native support gates. The isolated committed

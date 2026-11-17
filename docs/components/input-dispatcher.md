@@ -20,6 +20,15 @@ never exposes or logs action payloads.
   unbounded vector of receipts or hidden queued bytes.
 - Every admitted action and release barrier receives one monotonic
   `DispatchPosition`. Dropping an action receipt does not cancel accepted work.
+- Session integration may inspect ordinary receipts with `try_outcome(&mut self)`
+  without waiting for native execution. Pending inspection retains the receiver;
+  completed outcomes are cached for repeat inspection or a final blocking/timed
+  wait. Producer loss is an explicit safe error, never indefinite pending.
+- Release tickets inspect the existing shared completion slot with
+  `try_outcome(&self)`. None is not proof of neutrality or worker health: the
+  session owner still checks its deadline and dispatcher snapshot. The slot uses
+  its existing short mutex, not a lock-free or hard-real-time guarantee. No
+  second backend owner, helper thread or unbounded waiter list is introduced.
 - A state-changing action is a barrier because only an immediately adjacent
   compatible pointer delta or same-axis scroll delta can coalesce. No
   coalescing crosses any other action.
@@ -109,5 +118,13 @@ racing releases, shutdown from fault, backend panic, mutex poison, explicit
 resume, release ordering, and a small exhaustive held-state transition model.
 The mock records release-call count and applies its configured deterministic
 latency to both execute and release calls.
+
+SS-002's directly required receipt bridge adds tests for repeated pending reads,
+stable executed/rejected/backend-error/cancelled outcomes, polling followed by
+zero-timeout/blocking waits, producer loss, and inspection while native work is
+deliberately gated and priority cleanup cancels queued input. A test-only unwind
+guard opens that gate before worker teardown so a failing assertion cannot
+strand the new blocked-worker test. Existing terminal-fault regressions remain
+enabled and passing; no fault-latch/admission/release behavior changed.
 
 These tests use no native input backend and do not establish platform support.

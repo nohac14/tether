@@ -238,6 +238,7 @@ impl std::error::Error for TicketError {}
 pub struct DispatchReceipt {
     position: DispatchPosition,
     receiver: mpsc::Receiver<DispatchOutcome>,
+    observed: Option<DispatchOutcome>,
 }
 
 impl DispatchReceipt {
@@ -247,6 +248,26 @@ impl DispatchReceipt {
         self.position
     }
 
+    /// Inspects completion without waiting for native execution.
+    ///
+    /// Pending inspection does not consume or cancel the receipt. Once observed,
+    /// the same outcome remains available to repeated inspection or a final wait.
+    /// This does not grant input authority or change dispatcher/backend state.
+    ///
+    /// # Errors
+    /// Returns [`TicketError::WorkerStopped`] if the producer disappears without
+    /// publishing an outcome; worker loss must not be mistaken for pending work.
+    pub fn try_outcome(&mut self) -> Result<Option<DispatchOutcome>, TicketError> {
+        if self.observed.is_none() {
+            self.observed = match self.receiver.try_recv() {
+                Ok(outcome) => Some(outcome),
+                Err(mpsc::TryRecvError::Empty) => None,
+                Err(mpsc::TryRecvError::Disconnected) => return Err(TicketError::WorkerStopped),
+            };
+        }
+        Ok(self.observed)
+    }
+
     /// Waits until execution, rejection, cancellation, or worker loss.
     ///
     /// # Errors
@@ -254,6 +275,9 @@ impl DispatchReceipt {
     /// Returns [`TicketError::WorkerStopped`] if the worker disappears before
     /// publishing an outcome.
     pub fn wait(self) -> Result<DispatchOutcome, TicketError> {
+        if let Some(outcome) = self.observed {
+            return Ok(outcome);
+        }
         self.receiver.recv().map_err(|_| TicketError::WorkerStopped)
     }
 
@@ -264,6 +288,9 @@ impl DispatchReceipt {
     /// Returns [`TicketError::TimedOut`] on deadline expiry or
     /// [`TicketError::WorkerStopped`] on channel disconnection.
     pub fn wait_timeout(self, timeout: Duration) -> Result<DispatchOutcome, TicketError> {
+        if let Some(outcome) = self.observed {
+            return Ok(outcome);
+        }
         self.receiver
             .recv_timeout(timeout)
             .map_err(|error| match error {
@@ -315,6 +342,17 @@ impl ReleaseTicket {
     #[must_use]
     pub const fn position(&self) -> DispatchPosition {
         self.position
+    }
+
+    /// Reads the shared completion slot without waiting for native cleanup.
+    ///
+    /// `None` is pending, not proof of neutrality or a live worker. The owner
+    /// must independently enforce its deadline and inspect dispatcher health.
+    /// Repeated reads and cloned tickets share the same bounded outcome slot.
+    /// This uses the existing short slot mutex; it is not a lock-free promise.
+    #[must_use]
+    pub fn try_outcome(&self) -> Option<ReleaseOutcome> {
+        lock_recover(&self.slot.outcome).clone()
     }
 
     /// Waits until native cleanup finishes.
@@ -534,7 +572,11 @@ impl<B: InputBackend + 'static> InputDispatcher<B> {
             });
         }
         self.shared.wake_worker.notify_one();
-        Ok(DispatchReceipt { position, receiver })
+        Ok(DispatchReceipt {
+            position,
+            receiver,
+            observed: None,
+        })
     }
 
     /// Stops ordinary admission and schedules priority native cleanup.
@@ -1243,6 +1285,115 @@ mod tests {
             *lock_recover(lock) = true;
             ready.notify_all();
         }
+    }
+
+    // Declare after the dispatcher in a blocked-worker test so an assertion
+    // failure opens the gate before dispatcher Drop joins that worker.
+    struct UnblockOnDrop<'a>(&'a Gate);
+
+    impl Drop for UnblockOnDrop<'_> {
+        fn drop(&mut self) {
+            self.0.release();
+        }
+    }
+
+    #[test]
+    fn nonwaiting_receipt_inspection_preserves_pending_and_completed_outcomes() {
+        let position = DispatchPosition(7);
+        for expected in [
+            DispatchOutcome::Executed { position },
+            DispatchOutcome::BackendRejected {
+                position,
+                error: BackendError::new(
+                    BackendErrorCategory::NativeCallFailed,
+                    OperationClass::PointerMove,
+                    RetryScope::AfterStatusRefresh,
+                ),
+            },
+            DispatchOutcome::Rejected {
+                position,
+                reason: RejectionReason::DuplicateDown,
+            },
+            DispatchOutcome::Cancelled {
+                position,
+                reason: CancellationReason::Emergency(EmergencyReason::ConnectionLost),
+            },
+        ] {
+            for timed_wait in [false, true] {
+                let (sender, receiver) = mpsc::channel();
+                let mut receipt = DispatchReceipt {
+                    position,
+                    receiver,
+                    observed: None,
+                };
+                for _ in 0..16 {
+                    assert_eq!(receipt.try_outcome(), Ok(None));
+                }
+                sender.send(expected).unwrap();
+                drop(sender);
+                assert_eq!(receipt.try_outcome(), Ok(Some(expected)));
+                assert_eq!(receipt.try_outcome(), Ok(Some(expected)));
+                assert_eq!(receipt.position(), position);
+                let completed = if timed_wait {
+                    receipt.wait_timeout(Duration::ZERO)
+                } else {
+                    receipt.wait()
+                };
+                assert_eq!(completed, Ok(expected));
+            }
+        }
+    }
+
+    #[test]
+    fn nonwaiting_receipt_reports_producer_loss_instead_of_pending_forever() {
+        let (sender, receiver) = mpsc::channel();
+        let mut receipt = DispatchReceipt {
+            position: DispatchPosition(1),
+            receiver,
+            observed: None,
+        };
+        assert_eq!(receipt.try_outcome(), Ok(None));
+        drop(sender);
+        assert_eq!(receipt.try_outcome(), Err(TicketError::WorkerStopped));
+        assert_eq!(receipt.try_outcome(), Err(TicketError::WorkerStopped));
+    }
+
+    #[test]
+    fn nonwaiting_release_inspection_preserves_reserved_cleanup_and_cancellation() {
+        let (backend, gate) = BlockingBackend::new();
+        let dispatcher =
+            InputDispatcher::start(backend, DispatcherConfig::new(2).unwrap()).unwrap();
+        let _unblock = UnblockOnDrop(&gate);
+        let running = dispatcher.submit(pointer(1, 0)).unwrap();
+        gate.wait_until_entered();
+        let mut queued = dispatcher
+            .submit(InputAction::PhysicalKey(KeyAction::Down(key(4))))
+            .unwrap();
+        let release = dispatcher
+            .request_release(EmergencyReason::ConnectionLost)
+            .unwrap();
+        let repeated = dispatcher
+            .request_release(EmergencyReason::ConnectionLost)
+            .unwrap();
+        assert_eq!(release.position(), repeated.position());
+        assert!(matches!(
+            queued.try_outcome(),
+            Ok(Some(DispatchOutcome::Cancelled { .. }))
+        ));
+        for _ in 0..16 {
+            assert_eq!(release.try_outcome(), None);
+        }
+        gate.release();
+        assert!(matches!(wait(running), DispatchOutcome::Executed { .. }));
+        let outcome = release.clone().wait_timeout(TEST_TIMEOUT).unwrap();
+        assert!(outcome.report.neutral);
+        assert_eq!(release.try_outcome(), Some(outcome.clone()));
+        assert_eq!(repeated.try_outcome(), Some(outcome));
+        let snapshot = dispatcher.snapshot();
+        assert_eq!(snapshot.mode, DispatcherMode::Suspended);
+        assert_eq!((snapshot.held_keys, snapshot.held_buttons), (0, 0));
+        let stopped = dispatcher.shutdown();
+        assert_eq!(stopped.backend.mock.held_counts(), (0, 0));
     }
 
     #[test]

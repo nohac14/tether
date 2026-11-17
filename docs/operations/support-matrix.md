@@ -21,6 +21,8 @@ PR-004 wire admission and SS-001's written session model are committed separatel
 PR-005 adds local two-language fixture verification, not a session runtime,
 browser compatibility, Windows execution or remote CI result. Its required CI
 execution remains pending; no support row is promoted by these fixtures.
+The SS-002 non-waiting receipt bridge is also a shared prerequisite only; it
+implements no session actor and establishes no native support or new phone result.
 
 | Configuration | Implemented / compiled evidence | Physical/runtime evidence | Remaining boundary |
 | --- | --- | --- | --- |
