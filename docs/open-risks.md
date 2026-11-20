@@ -1,7 +1,7 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-11-16
+**Last reviewed:** 2026-11-19
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
@@ -50,6 +50,13 @@ is deferred; R-019 is retained rather than suppressed or reported resolved.
 | R-018 | Release blocker | Open | Rust standard filesystem APIs provide the required lifetime locking and replacement primitives on current Windows, but do not expose explicit owner DACL construction or complete reparse/hard-link inspection. ST-002 and ST-003 therefore fail closed on Windows rather than accepting inherited ACLs as compliant. | Select and security-review a maintained safe Windows ACL/reparse implementation or approve a narrowly isolated audited Windows FFI boundary; cross-compile it and validate owner/System/Administrators access, broad-inheritance removal, reparse/hard-link attacks, lock contention, settings/identity replacement, power-loss recovery, reset, and upgrade behavior on actual Windows 11 before enabling persistent state. | ST-002/ST-003 Windows follow-up, IT-004, PK-001 |
 
 ## 2026-11-14 tooling security refresh
+
+The [November 19 admission cursor](manual-tests/2026-11-19-session-admission.md)
+adds stateful preparation/commit and queued held-state projection coverage, not
+a single-owner runtime or native cleanup proof. R-016 stays open for actor,
+queue/load and complete release integration. No cursor reset can resume or clear
+a terminally faulted dispatcher. The owner's newly available Windows machine is
+an opportunity for future evidence, not an executed validation or an R-018 waiver.
 
 The November 16 [protocol fixtures](manual-tests/2026-11-16-protocol-fixtures.md)
 and [session prerequisites](manual-tests/2026-11-16-session-prerequisites.md)

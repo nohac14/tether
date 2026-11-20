@@ -771,6 +771,12 @@ dependencies = [
 [[package]]
 name = "tether-session"
 version = "0.1.0"
+dependencies = [
+ "prost",
+ "tether-input-core",
+ "tether-protocol",
+ "tether-test-support",
+]
 
 [[package]]
 name = "tether-test-support"

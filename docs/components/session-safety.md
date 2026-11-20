@@ -2,8 +2,9 @@
 
 **Task:** SS-001
 
-**Status:** Implementation contract complete; SS-002/003/004 runtime and tests
-not implemented
+**Status:** Implementation contract complete. SS-002's receipt and transactional
+admission prerequisites are implemented; its actor/coordinator and SS-003/004
+runtime verification remain incomplete.
 
 **Authority:** `SPEC.md` sections 11, 15–16, 17.6, 19–21 and 33;
 [protocol](protocol.md), [wire validation](protocol-validation.md),
@@ -13,7 +14,9 @@ not implemented
 ## Trust and execution boundary
 
 One Rust session actor serializes control authority for one dispatcher/backend.
-Only it submits native-domain actions. Transport tasks, pairing, lifecycle
+The implemented [admission cursor](session-admission.md) supplies ordered
+connection-local staging only, not that actor or any authority to execute input.
+Only the actor submits native-domain actions. Transport tasks, pairing, lifecycle
 adapters, UI and Tauri request typed events; none inject input or grant ownership.
 The dispatcher worker remains the backend's exclusive owner. Session handling
 never waits synchronously for a native call, socket write, close handshake,

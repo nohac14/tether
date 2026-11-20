@@ -1,6 +1,6 @@
 # Current implementation and validation matrix
 
-**Date:** 2026-11-16
+**Date:** 2026-11-19
 
 **Release claim:** None. The complete Tether application is not yet built or
 validated end to end. Availability, compilation, inert tests, and a successful
@@ -23,6 +23,10 @@ browser compatibility, Windows execution or remote CI result. Its required CI
 execution remains pending; no support row is promoted by these fixtures.
 The SS-002 non-waiting receipt bridge is also a shared prerequisite only; it
 implements no session actor and establishes no native support or new phone result.
+The transactional admission cursor is now implemented and tested separately.
+It likewise adds no live session, credential verification or Windows runtime
+claim. The owner reports a Windows machine is available; no tests have run there
+and there is still no finished Windows executable to run.
 
 | Configuration | Implemented / compiled evidence | Physical/runtime evidence | Remaining boundary |
 | --- | --- | --- | --- |

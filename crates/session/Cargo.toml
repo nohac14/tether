@@ -5,6 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+tether-input-core = { version = "=0.1.0", path = "../input-core" }
+tether-protocol = { version = "=0.1.0", path = "../protocol" }
+
+[dev-dependencies]
+prost = { version = "=0.14.6", default-features = false, features = ["derive", "std"] }
+tether-test-support = { version = "=0.1.0", path = "../test-support" }
+
 [lints]
 workspace = true
 
