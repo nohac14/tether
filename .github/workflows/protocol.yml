@@ -1,0 +1,75 @@
+name: Protocol fixtures and generation
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    name: Protocol (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            buf_asset: buf-Windows-x86_64.exe
+          - runner: ubuntu-24.04
+            buf_asset: buf-Linux-x86_64
+          - runner: macos-15
+            buf_asset: buf-Darwin-arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version: 24.19.0
+          package-manager-cache: false
+
+      - name: Fetch locked workspace dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm install --global --ignore-scripts pnpm@11.25.0
+          pnpm install --frozen-lockfile --ignore-scripts
+          rustup show active-toolchain
+          cargo fetch --locked
+
+      - name: Install checksum-pinned Buf
+        shell: pwsh
+        env:
+          BUF_ASSET: ${{ matrix.buf_asset }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $version = node -p "require('./tooling/protocol-tools.json').buf.version"
+          $buf = Join-Path $env:RUNNER_TEMP $env:BUF_ASSET
+          $url = "https://github.com/bufbuild/buf/releases/download/v$version/$env:BUF_ASSET"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --max-time 90 --max-filesize 134217728 --output $buf $url
+          if ($env:RUNNER_OS -ne 'Windows') { chmod 0755 $buf }
+          $env:TETHER_BUF = $buf
+          node --input-type=module -e "import { verifiedBuf } from './tooling/check-protocol.mjs'; verifiedBuf();"
+          "TETHER_BUF=$buf" >> $env:GITHUB_ENV
+
+      - name: Check schema compatibility
+        run: node tooling/check-protocol.mjs
+
+      - name: Reproduce the Rust and TypeScript bindings offline
+        run: node tooling/generate-protocol.mjs --check
+
+      - name: Run Rust protocol tests and shared corpus
+        run: cargo test --locked --offline -p tether-protocol --all-targets
+
+      - name: Run TypeScript protocol tests and shared corpus
+        run: node node_modules/vitest/vitest.mjs run apps/mobile-web/src/protocol
