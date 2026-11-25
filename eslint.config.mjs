@@ -22,6 +22,12 @@ export default defineConfig(
     },
   },
   {
+    files: ["apps/desktop/ui/**/*.mjs"],
+    languageOptions: {
+      globals: { document: "readonly", window: "readonly" },
+    },
+  },
+  {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [
       js.configs.recommended,

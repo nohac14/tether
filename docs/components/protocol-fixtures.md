@@ -2,8 +2,9 @@
 
 **Task:** PR-005
 
-**Status:** Implemented locally; verification recorded in the dated milestone;
-remote CI acceptance remains pending F-005
+**Status:** Complete. The locked generation and both fixture suites passed
+on [GitHub Actions](https://github.com/nohac14/tether/actions/runs/44968258011)
+on Windows, Linux, and macOS.
 
 ## Boundary
 

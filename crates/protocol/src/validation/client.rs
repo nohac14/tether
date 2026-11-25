@@ -57,6 +57,11 @@ impl TimedOperation {
     pub const fn operation(&self) -> &Operation {
         &self.operation
     }
+
+    #[must_use]
+    pub fn into_operation(self) -> Operation {
+        self.operation
+    }
 }
 
 #[derive(Clone, Eq, PartialEq)]

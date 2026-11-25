@@ -66,6 +66,18 @@ The protobuf-es browser runtime requires both Apache-2.0 and BSD-3-Clause
 notices, including Google's varint notice; PK-005 must include them, rather
 than treating the conjunction as a choice of license.
 
+NW-006 accepts the exact `sha1_smol` 1.0.1 BSD-3-Clause license for the
+non-authenticating RFC 6455 accept header. Keep the BSD notice and the bundled
+MIT component notice in any distribution. The exception applies only to that
+version and does not alter the advisory gate or global license allowlist.
+
+The Windows test shell in ADR 0006 uses the unmodified Tauri registry
+dependencies `cssparser` 0.37.0, `cssparser-macros` 0.7.1, `dtoa-short`
+0.3.5, `option-ext` 0.2.0, and `selectors` 0.38.0 under MPL-2.0.
+Retain their notices and point recipients to the exact covered source with
+the executable. Its `foldhash` 0.2.0 uses Zlib, whose origin and source
+notice must be preserved. These exceptions apply to the named versions.
+
 The npm development graph is reviewed separately in `dependency-inventory.md`;
 cargo-deny does not inspect it. The current additional BSD-2-Clause,
 BSD-3-Clause, ISC, Python-2.0, and BlueOak-1.0.0 packages are accepted only with

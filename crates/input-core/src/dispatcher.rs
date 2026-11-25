@@ -453,6 +453,7 @@ struct Completion {
 struct QueueEntry {
     action: InputAction,
     completions: Vec<Completion>,
+    guarded: bool,
 }
 
 #[derive(Clone)]
@@ -538,45 +539,75 @@ impl<B: InputBackend + 'static> InputDispatcher<B> {
     /// Returns [`AdmissionError`] if admission is closed, the worker stopped,
     /// positions are exhausted, or saturation initiated emergency cleanup.
     pub fn submit(&self, action: InputAction) -> Result<DispatchReceipt, AdmissionError> {
-        let (sender, receiver) = mpsc::channel();
         let mut state = lock_recover(&self.shared.state);
+        let positions = self.reserve_actions(&mut state, 1)?;
+        let receipt = enqueue(&mut state, action, DispatchPosition(positions.start), false);
+        self.shared.wake_worker.notify_one();
+        Ok(receipt)
+    }
+
+    /// Reserves capacity and consecutive positions for an entire validated batch
+    /// before the worker can see any of it. Native execution remains ordered and
+    /// can fail or be interrupted by the reserved release path.
+    ///
+    /// # Errors
+    /// Returns [`AdmissionError`] without enqueuing a prefix if admission is
+    /// closed or the whole batch cannot fit. Capacity and position exhaustion
+    /// trigger the same reserved cleanup as [`Self::submit`].
+    pub fn submit_batch(
+        &self,
+        actions: Vec<InputAction>,
+    ) -> Result<Vec<DispatchReceipt>, AdmissionError> {
+        if actions.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut state = lock_recover(&self.shared.state);
+        let positions = self.reserve_actions(&mut state, actions.len())?;
+        let receipts = positions
+            .zip(actions)
+            .map(|(position, action)| enqueue(&mut state, action, DispatchPosition(position), true))
+            .collect();
+        self.shared.wake_worker.notify_one();
+        Ok(receipts)
+    }
+
+    /// Maximum logical actions waiting for the dispatcher worker.
+    #[must_use]
+    pub fn queue_capacity(&self) -> usize {
+        lock_recover(&self.shared.state).queue_capacity
+    }
+
+    fn reserve_actions(
+        &self,
+        state: &mut SharedState,
+        count: usize,
+    ) -> Result<std::ops::Range<u64>, AdmissionError> {
         if !state.worker_alive {
             return Err(AdmissionError::WorkerStopped);
         }
         if state.mode != DispatcherMode::Running {
             return Err(AdmissionError::NotAdmitting(state.mode));
         }
-        if state.queued_actions == state.queue_capacity {
-            let ticket = begin_emergency_locked(&mut state, EmergencyReason::QueueSaturated)
+        if count > state.queue_capacity - state.queued_actions {
+            let ticket = begin_emergency_locked(state, EmergencyReason::QueueSaturated)
                 .map_err(|()| AdmissionError::PositionExhausted)?;
             self.shared.wake_worker.notify_one();
             return Err(AdmissionError::QueueSaturated {
                 release_position: ticket.position,
             });
         }
-        let Some(position) = allocate_action_position(&mut state) else {
-            let _release = begin_emergency_locked(&mut state, EmergencyReason::PositionExhausted);
+        let positions = state.next_position.and_then(|first| {
+            first
+                .checked_add(u64::try_from(count).ok()?)
+                .map(|next| (first, next))
+        });
+        let Some((first, next)) = positions else {
+            let _release = begin_emergency_locked(state, EmergencyReason::PositionExhausted);
             self.shared.wake_worker.notify_one();
             return Err(AdmissionError::PositionExhausted);
         };
-        let completion = Completion { position, sender };
-        state.queued_actions += 1;
-        if let Some(tail) = state.queue.back_mut()
-            && try_coalesce(&mut tail.action, &action)
-        {
-            tail.completions.push(completion);
-        } else {
-            state.queue.push_back(QueueEntry {
-                action,
-                completions: vec![completion],
-            });
-        }
-        self.shared.wake_worker.notify_one();
-        Ok(DispatchReceipt {
-            position,
-            receiver,
-            observed: None,
-        })
+        state.next_position = Some(next);
+        Ok(first..next)
     }
 
     /// Stops ordinary admission and schedules priority native cleanup.
@@ -678,13 +709,32 @@ fn lock_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn allocate_action_position(state: &mut SharedState) -> Option<DispatchPosition> {
-    let current = state.next_position?;
-    if current == u64::MAX {
-        return None;
+fn enqueue(
+    state: &mut SharedState,
+    action: InputAction,
+    position: DispatchPosition,
+    guarded: bool,
+) -> DispatchReceipt {
+    let (sender, receiver) = mpsc::channel();
+    let completion = Completion { position, sender };
+    state.queued_actions += 1;
+    if let Some(tail) = state.queue.back_mut()
+        && try_coalesce(&mut tail.action, &action)
+    {
+        tail.completions.push(completion);
+        tail.guarded |= guarded;
+    } else {
+        state.queue.push_back(QueueEntry {
+            action,
+            completions: vec![completion],
+            guarded,
+        });
     }
-    state.next_position = current.checked_add(1);
-    Some(DispatchPosition(current))
+    DispatchReceipt {
+        position,
+        receiver,
+        observed: None,
+    }
 }
 
 fn allocate_release_position(state: &mut SharedState) -> Option<DispatchPosition> {
@@ -879,6 +929,8 @@ fn process_action(
         Ok(Err(error)) => {
             if error.requires_emergency_release() {
                 schedule_internal_release(shared, EmergencyReason::BackendFault);
+            } else if entry.guarded {
+                schedule_internal_release(shared, EmergencyReason::Lifecycle);
             }
             complete_action(shared, entry.completions, |position| {
                 DispatchOutcome::BackendRejected { position, error }
@@ -935,7 +987,7 @@ fn complete_release(
         reason: pending.reason,
         report,
     };
-    {
+    let superseded = {
         let mut state = lock_recover(&shared.state);
         mark_completed(&mut state, pending.position);
         state.active_release = None;
@@ -958,9 +1010,34 @@ fn complete_release(
         {
             state.worker_alive = false;
             cancel_queue_locked(&mut state, CancellationReason::WorkerStopped);
+            let queued = state.emergency.take();
+            if let Some(queued) = &queued {
+                mark_completed(&mut state, queued.position);
+            }
+            queued
+        } else {
+            if state.emergency.is_some() {
+                state.mode = DispatcherMode::Releasing;
+            }
+            None
         }
-    }
+    };
+    let settled = superseded.map(|queued| {
+        let completion = ReleaseOutcome {
+            position: queued.position,
+            reason: if release_panicked {
+                EmergencyReason::WorkerPanic
+            } else {
+                outcome.reason
+            },
+            report: outcome.report.clone(),
+        };
+        (queued.slot, completion)
+    });
     pending.slot.complete(outcome);
+    if let Some((slot, completion)) = settled {
+        slot.complete(completion);
+    }
     shared.wake_worker.notify_all();
 }
 
@@ -1404,6 +1481,68 @@ mod tests {
             Err(DispatcherConfigError)
         );
         assert_eq!(DispatcherConfig::new(3).expect("valid").queue_capacity(), 3);
+    }
+
+    #[test]
+    fn batch_rejection_does_not_consume_positions_or_enqueue_a_prefix() {
+        let (backend, gate) = BlockingBackend::new();
+        let dispatcher =
+            InputDispatcher::start(backend, DispatcherConfig::new(2).unwrap()).unwrap();
+        let active = dispatcher.submit(pointer(5, 0)).unwrap();
+        gate.wait_until_entered();
+        let waiting = dispatcher.submit(pointer(8, 0)).unwrap();
+        let result = dispatcher.submit_batch(vec![pointer(2, 0), pointer(3, 0)]);
+        gate.release();
+        let AdmissionError::QueueSaturated { release_position } = result.unwrap_err() else {
+            panic!("expected whole-batch capacity rejection");
+        };
+        assert_eq!(release_position.get(), waiting.position().get() + 1);
+        assert!(matches!(wait(active), DispatchOutcome::Executed { .. }));
+        assert!(matches!(wait(waiting), DispatchOutcome::Cancelled { .. }));
+        assert_eq!(dispatcher.shutdown().backend.mock.calls().len(), 1);
+    }
+
+    #[test]
+    fn batch_positions_preserve_the_final_reserved_release_position() {
+        let dispatcher =
+            InputDispatcher::start(MockInputBackend::new(), DispatcherConfig::default()).unwrap();
+        lock_recover(&dispatcher.shared.state).next_position = Some(u64::MAX - 2);
+        let accepted = dispatcher
+            .submit_batch(vec![pointer(1, 0), pointer(2, 0)])
+            .unwrap();
+        assert_eq!(accepted[0].position().get(), u64::MAX - 2);
+        assert_eq!(accepted[1].position().get(), u64::MAX - 1);
+        for receipt in accepted {
+            assert!(matches!(wait(receipt), DispatchOutcome::Executed { .. }));
+        }
+        assert!(matches!(
+            dispatcher.submit_batch(vec![pointer(3, 0)]),
+            Err(AdmissionError::PositionExhausted)
+        ));
+        wait_until_worker_stops(&dispatcher);
+        let stopped = dispatcher.shutdown();
+        assert_eq!(stopped.backend.release_calls(), 1);
+    }
+
+    #[test]
+    fn terminal_release_settles_a_shutdown_requested_while_it_is_executing() {
+        let (backend, gate) = BlockingReleaseBackend::new();
+        let dispatcher = InputDispatcher::start(backend, DispatcherConfig::default()).unwrap();
+        let terminal = dispatcher
+            .request_release(EmergencyReason::WorkerPanic)
+            .unwrap();
+        gate.wait_until_entered();
+        let shutdown = dispatcher
+            .request_release(EmergencyReason::Shutdown)
+            .unwrap();
+        gate.release();
+        let completed = terminal.wait_timeout(TEST_TIMEOUT).unwrap();
+        let settled = shutdown.wait_timeout(TEST_TIMEOUT).unwrap();
+        assert_eq!(settled.reason, EmergencyReason::WorkerPanic);
+        assert_eq!(settled.report, completed.report);
+        assert!(settled.position > completed.position);
+        assert!(!dispatcher.snapshot().worker_alive);
+        assert!(dispatcher.shutdown().backend.mock.is_neutral());
     }
 
     #[test]

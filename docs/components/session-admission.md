@@ -2,8 +2,8 @@
 
 **Task:** SS-002, supporting admission component
 
-**Status:** Implemented; actor/coordinator, queue integration and full task
-acceptance remain incomplete
+**Status:** Implemented and wired into the session actor. Production transport
+and desktop composition remain downstream.
 
 **Authority:** [session safety](session-safety.md),
 [protocol validation](protocol-validation.md), `SPEC.md` sections 11 and 15–16
@@ -29,8 +29,9 @@ default-allow authorizer or production credential stub.
    It returns an owned, non-Clone preparation with private message/state fields.
    Dropping or rejecting it changes nothing and never executes input.
 2. The actor reserves its bounded local queue capacity and byte/receipt budget.
-   Preparation exposes expanded logical-operation count and a barrier kind;
-   these are not a complete retained-byte accounting implementation.
+   Preparation exposes expanded logical-operation count, retained text size,
+   and a barrier kind. The actor counts fixed action and receipt records and
+   reserves the combined budget before commit.
 3. Under the same serialized authority transition, `commit` checks cursor identity,
    cursor revision and the complete captured facts again. Backend equality is
    checked even if a buggy provider retained its status revision. Cross-cursor,
@@ -81,8 +82,8 @@ monotonic time/heartbeat state, counter exhaustion, concurrent private instance
 allocation, redaction and a 10,000-step seeded independent button-state model.
 Seeded randomness is dev-only. These tests make no native calls.
 
-The SS-002 single-owner actor, bounded queues/accounting, reserved external
-safety mailbox, confirmed-native receipt integration, grants/transfer coordinator
-and exhaustive actor model/race tests remain required. SS-003 still owns actual
-heartbeat deadlines; tracking an identifier here is not a liveness implementation.
-See the [dated checkpoint](../manual-tests/2026-11-19-session-admission.md).
+The actor owns heartbeat deadlines, revocation signals and release receipts.
+The [admission checkpoint](../manual-tests/2026-11-19-session-admission.md)
+records standalone cursor coverage. The
+[ownership and heartbeat checkpoint](../manual-tests/2026-11-20-session-control.md)
+records the mock integration.

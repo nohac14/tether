@@ -1,0 +1,124 @@
+:root {
+  color-scheme: light dark;
+  font:
+    15px/1.45 system-ui,
+    sans-serif;
+  --background: #eef3f5;
+  --panel: #fff;
+  --text: #142934;
+  --subtle: #425d68;
+  --stroke: #c3d0d6;
+  --brand: #0a6174;
+  --brand-text: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #101c24;
+    --panel: #192a34;
+    --text: #edf5f7;
+    --subtle: #aec3ce;
+    --stroke: #406171;
+    --brand: #70cde0;
+    --brand-text: #10272e;
+  }
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+}
+main {
+  width: min(100% - 48px, 580px);
+  margin: 24px auto;
+}
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+h2 {
+  margin: 0;
+  font-size: 19px;
+}
+p {
+  margin: 10px 0 16px;
+  color: var(--subtle);
+}
+section {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: var(--panel);
+}
+button,
+select {
+  min-height: 38px;
+  border-radius: 7px;
+  font: inherit;
+}
+select {
+  display: block;
+  width: 100%;
+  margin: 6px 0 14px;
+  padding: 6px;
+}
+button {
+  padding: 6px 13px;
+  border: 1px solid transparent;
+  background: var(--brand);
+  color: var(--brand-text);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button.secondary {
+  border-color: var(--stroke);
+  background: var(--panel);
+  color: var(--text);
+}
+.session-heading,
+.actions,
+li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.session-heading {
+  justify-content: space-between;
+}
+.qr {
+  text-align: center;
+}
+canvas {
+  image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+ul {
+  padding: 0;
+  margin: 8px 0 0;
+}
+li {
+  border-top: 1px solid var(--stroke);
+  padding: 10px 0 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+li span {
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+[hidden] {
+  display: none !important;
+}

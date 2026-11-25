@@ -2,10 +2,147 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Tether</title>
+    <link rel="stylesheet" href="/src/styles/shell.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <main id="root" data-theme="system" data-scroll-side="right">
+      <header class="connection">
+        <div class="connection-label">
+          <h1>Tether</h1>
+          <p id="status" role="status">Disconnected</p>
+        </div>
+        <button id="control-request" type="button" hidden>Take control</button>
+        <button id="keyboard-open" type="button" disabled aria-describedby="status">
+          Keyboard
+        </button>
+        <textarea
+          id="keyboard-editor"
+          class="keyboard-editor"
+          aria-label="Phone text entry"
+          tabindex="-1"
+          maxlength="4096"
+          autocapitalize="none"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          disabled
+        ></textarea>
+        <p id="keyboard-feedback" class="keyboard-feedback" role="status" hidden></p>
+        <details class="settings">
+          <summary>Settings</summary>
+          <form class="settings-panel">
+            <label>
+              Vertical scroll
+              <select id="strip-side">
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+              </select>
+            </label>
+            <label>
+              Theme
+              <select id="theme">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <fieldset>
+              <legend>Dragging</legend>
+              <label class="toggle"
+                ><input type="checkbox" name="long-press" checked /> Long-press drag</label
+              >
+              <label class="toggle">
+                <input type="checkbox" name="double-tap" aria-describedby="tap-delay" />
+                Double-tap drag
+              </label>
+              <small id="tap-delay">Double-tap drag adds up to 250 ms to a single tap.</small>
+            </fieldset>
+            <fieldset>
+              <legend>Vertical scrolling</legend>
+              <label>
+                Direction
+                <select name="vertical-direction">
+                  <option value="natural">Natural</option>
+                  <option value="traditional">Traditional</option>
+                </select>
+              </label>
+              <label>
+                Sensitivity
+                <input
+                  type="range"
+                  name="vertical-sensitivity"
+                  min="0.125"
+                  max="8"
+                  step="0.125"
+                  value="1"
+                />
+              </label>
+              <label>
+                Momentum
+                <select name="vertical-momentum">
+                  <option value="off">Off</option>
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>Horizontal scrolling</legend>
+              <label>
+                Direction
+                <select name="horizontal-direction">
+                  <option value="natural">Natural</option>
+                  <option value="traditional">Traditional</option>
+                </select>
+              </label>
+              <label>
+                Sensitivity
+                <input
+                  type="range"
+                  name="horizontal-sensitivity"
+                  min="0.125"
+                  max="8"
+                  step="0.125"
+                  value="1"
+                />
+              </label>
+              <label>
+                Momentum
+                <select name="horizontal-momentum">
+                  <option value="off">Off</option>
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </fieldset>
+          </form>
+        </details>
+      </header>
+      <section class="surface" aria-label="Pointer and scrolling surfaces" aria-disabled="true">
+        <div class="pad" data-region="pad" role="region" aria-label="Touchpad"></div>
+        <div
+          class="scroll vertical"
+          data-region="vertical"
+          role="region"
+          aria-label="Vertical scroll"
+        >
+          <span aria-hidden="true">↔&#xFE0E;</span>
+        </div>
+        <div
+          class="scroll horizontal"
+          data-region="horizontal"
+          role="region"
+          aria-label="Horizontal scroll"
+        >
+          <span aria-hidden="true">↔&#xFE0E;</span>
+        </div>
+        <div class="neutral" data-region="neutral" aria-hidden="true"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -8,3 +8,13 @@ publish = false
 [lints]
 workspace = true
 
+[dependencies]
+tether-config = { version = "=0.1.0", path = "../config" }
+tether-network = { version = "=0.1.0", path = "../network" }
+
+[dev-dependencies]
+tether-test-support = { version = "=0.1.0", path = "../test-support" }
+
+[target.'cfg(windows)'.dev-dependencies]
+windows = { version = "0.62.2", default-features = false, features = ["std", "Win32_Foundation", "Win32_NetworkManagement_Dns"] }
+

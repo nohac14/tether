@@ -17,8 +17,8 @@ The graph was enumerated with `cargo metadata --format-version 1 --locked`.
 | `cfg-if` | 1.0.5 | MIT OR Apache-2.0 | Target-selection helper used by `getrandom`; approved. |
 | `libc` | 0.2.190 | MIT OR Apache-2.0 | Target-gated system API bindings used by `getrandom`; approved. |
 | `r-efi` | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | Target-gated UEFI entropy support; accepted under the MIT/Apache alternatives and not built for current desktop targets. |
-| `serde` | 1.0.229 | MIT OR Apache-2.0 | Direct typed serialization API for versioned local settings; approved. |
-| `serde_json` | 1.0.151 | MIT OR Apache-2.0 | Direct maintained strict JSON parser/serializer; approved with exact typed envelopes and byte ceilings. PR-005 also reuses this exact reviewed version as a protocol dev-dependency for synthetic fixtures, not a new runtime dependency. |
+| `serde` | 1.0.229 | MIT OR Apache-2.0 | Direct typed serialization API for local settings and closed pairing request envelopes. |
+| `serde_json` | 1.0.151 | MIT OR Apache-2.0 | Direct strict JSON parser for settings and the two HTTP pairing routes. The pairing parser checks a 4,096-byte body limit before decoding. PR-005 also uses the same locked version for synthetic fixtures. |
 | `serde_core` | 1.0.229 | MIT OR Apache-2.0 | Serde traits transitive; approved. |
 | `serde_derive` | 1.0.229 | MIT OR Apache-2.0 | Serde procedural macros; build-time code, approved for closed storage types. |
 | `proc-macro2` | 1.0.107 | MIT OR Apache-2.0 | Procedural-macro token support; transitive, approved. |
@@ -65,6 +65,90 @@ features are not enabled. The existing `libc` transitive includes its reviewed
 target-configuration/rustc-introspection build script; `cfg-if` and target-gated
 `r-efi` add no build script to this graph. No dependency build step downloads or
 runs an external installation script.
+
+## Windows delivery dependency update — 2026-11-19
+
+The pairing crate reuses locked `getrandom` 0.4.3 for OS entropy. It adds
+RustCrypto `sha2` 0.11.1 for fixed-size SHA-256 and `ctutils` 0.4.8 for
+constant-time digest comparison, both with default features off. The static
+responder adds `http` 1.5.0 for interoperable request/response types and reuses
+the same SHA-256 version for strong ETags.
+
+| New locked packages | Role and review |
+| --- | --- |
+| `sha2` 0.11.1, `digest` 0.11.3, `crypto-common` 0.2.2, `block-buffer` 0.12.1, `hybrid-array` 0.4.15, `typenum` 1.20.1, `cpufeatures` 0.3.1 | SHA-256 implementation, fixed-size buffering and CPU selection |
+| `ctutils` 0.4.8, `cmov` 0.5.4 | Fixed-length equality and compiler-resistant constant-time primitives. The locked versions are outside the affected ranges of RUSTSEC-2026-0385 and RUSTSEC-2026-0003. |
+| `http` 1.5.0 | Typed HTTP values for the static asset adapter. No listener or HTTP parser is added. |
+
+The added registry packages are available under MIT or Apache-2.0 and need no
+new build script, procedural macro, registry or license exception. ADR 0005
+reuses the locked `windows` 0.62.2 bindings in `config` for Windows-only
+Foundation, Security/Authorization, FileSystem and System APIs. The native
+storage module owns pointer, descriptor and handle lifetimes. The platform
+edge adds no registry version. Default workspace lint policy stays in force.
+
+PA-003 uses the local `tether-pairing` crate in `tether-config` for validated
+host and label types, approval claims and digest operations. The mock release
+test adds a development-only edge to the local `tether-input-core` crate.
+Both edges reuse the existing locked registry graph.
+
+The restored interface policy reuses `tether-config` for typed interface IDs
+and settings projection. The Windows provider uses the existing `windows`
+0.62.2 bindings with target-only IP Helper, NDIS and WinSock features and
+default features disabled. Source review covers the generated ABI and the
+local ownership of IP Helper tables, initialized address unions and bounded
+row access. The provider reads assigned records without opening sockets
+or changing the OS network configuration. The lockfile adds two dependency
+edges to existing packages.
+
+The Windows profile reader adds Network List Manager and COM features to
+the same locked Windows bindings. It activates the local read-only manager
+on the worker's COM apartment and uses generated ownership for returned
+interfaces. The Windows TCP adapter reuses locked `socket2` 0.6.5 with
+default features off. Source review covered native socket creation and
+ownership, WinSock initialization, non-inheritable handles, IPv6-only
+configuration, and the single local `SO_EXCLUSIVEADDRUSE` WinSock
+option boundary. No new registry package, version or source was added.
+
+The restored listener supervisor adds a development-only edge to the local
+`tether-input-core` crate. The integration fixture uses the existing mock
+backend and reserved dispatcher release ticket. The production listener
+depends on the core's safety interface and adds no input backend dependency.
+
+The desktop build uses the already locked Vite 8.1.6 through pinned Node.js.
+The local Cargo build script calls the workspace builder. It disables Vite
+public file copying, inlining and sourcemaps, then validates the emitted
+manifest and stages only the checked asset bytes and include paths. The
+desktop uses the local `tether-network` asset boundary and adds a test edge
+to locked `http` 1.5.0. No registry versions or Node runtime files are added
+to the Windows artifact. [Vite build manifest](https://vite.dev/guide/backend-integration)
+
+NW-004 adds `httparse` 1.10.1 and `httpdate` 1.0.3. Both are available
+under MIT or Apache-2.0. The head parser preserves repeated fields for
+Tether's framing and authority checks. Its build script invokes the pinned
+compiler to check the version and choose SIMD configuration. The formatter
+produces an HTTP Date header from the OS clock. The adapter reuses locked
+Tokio net, I/O, runtime and timer features and `tether-pairing` host scope
+validation. Tokio's paused clock is a development feature for deadline tests.
+Hyper was considered during source review. Its normalization of repeated
+equal lengths would conceal framing data required by this route.
+[HTTP Date semantics](https://www.rfc-editor.org/rfc/rfc9110.html#section-6.6.1)
+
+## Personal Windows test shell — 2026-11-21
+
+ADR 0006 enables the Windows-only `windows-test` feature. Tauri 2.12.7
+uses its Wry runtime and bundled asset protocol. `tauri-build` 2.7.6
+generates local command permissions, and the single-instance plugin
+2.5.5 uses the built-in Windows implementation. These are dual
+MIT/Apache-2.0 crates from the official registry. The shell uses the
+installed Edge WebView2 Runtime. No WebView2 installer is bundled.
+`qrcode` 0.14.1 (MIT/Apache-2.0) has its optional rendering features
+disabled. It generates a QR matrix for the local canvas.
+
+The Windows feature graph accepts the exact MPL-2.0 and Zlib dependencies
+listed in [the dependency policy](dependency-policy.md#license-policy).
+Release notices accompany the executable, including the published crates.io
+source archives for the unmodified MPL-2.0 components.
 
 ## macOS checkpoint dependency note
 
@@ -127,6 +211,25 @@ exception and policy/inventory were synchronized. Bans/licenses/sources now
 pass; advisories still fail only on R-019's unchanged Wayland transitives. No
 advisory finding is ignored. This graph is not evidence that the future
 production network server, packaging, or physical Safari behavior works.
+
+## NW-006 WebSocket server dependencies
+
+The locked Windows graph adds the following crates for the production
+frame adapter. The `server` and `sha1_smol` features are the only
+`tokio-websockets` features enabled. Client, TLS and compression code are
+outside this boundary.
+
+| Package | Use and notice |
+| --- | --- |
+| `tokio-websockets` 0.13.3 | MIT. Server-mode frame parsing, masking, fragmentation and control frames. The released parser and stream source contain no payload logging calls. |
+| `tokio-util` 0.7.20, `futures-sink` 0.3.34 | MIT. Async framing and sink support. The optional Tokio codec tracing feature was not selected. |
+| `simdutf8` 0.1.5 | MIT or Apache-2.0. Upstream UTF-8 validation for protocol frames. |
+| `base64` 0.22.1, `sha1_smol` 1.0.1 | MIT or Apache-2.0 for `base64`. `sha1_smol` uses BSD-3-Clause and includes a separate MIT notice. Keep both notices; SHA-1 is used for the RFC 6455 accept header only. |
+
+The crates.io release archive was checksum verified. The pinned Windows
+audit passes advisories, bans, licenses, and sources, with existing duplicate
+warnings. The new BSD exception names the exact helper release. The all-target
+R-019 Wayland advisory remains open.
 
 ## NW-002 internal dependency reuse
 

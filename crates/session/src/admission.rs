@@ -89,6 +89,24 @@ impl PreparedEnvelope {
     pub const fn barrier(&self) -> Option<BarrierKind> {
         self.barrier
     }
+
+    /// Additional payload bytes retained by native text actions.
+    #[must_use]
+    pub fn text_bytes(&self) -> usize {
+        let ClientMessage::Batch(operations) = self.message.message() else {
+            return 0;
+        };
+        operations
+            .iter()
+            .filter_map(|operation| {
+                if let Operation::Input(InputAction::TextInsert(text)) = operation.operation() {
+                    Some(text.byte_len())
+                } else {
+                    None
+                }
+            })
+            .sum()
+    }
 }
 
 /// Expected ordered state, explicitly not a native held-state/neutrality report.

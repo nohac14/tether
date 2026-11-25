@@ -266,6 +266,10 @@ open socket do not. Approximately four seconds without a valid heartbeat
 revokes ownership and invokes release-all through the emergency path. Exact
 interval and timeout values are sent by `ServerHello`, remain within reviewed
 bounds, and are tested with a fake clock.
+The current session policy advertises a one-second interval and four-second
+timeout. A heartbeat processed at or after expiration cannot revive the lease.
+The browser matches pongs to its own bounded send history and starts with a
+fresh timer on every new negotiated connection.
 
 ## Errors and WebSocket closure
 

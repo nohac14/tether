@@ -5,6 +5,27 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[features]
+windows-test = ["dep:tether-input-windows"]
+
+[dependencies]
+futures-util = { version = "0.3.34", default-features = false }
+getrandom = "0.4.3"
+tether-config = { version = "=0.1.0", path = "../config" }
+tether-input-core = { version = "=0.1.0", path = "../input-core" }
+tether-network = { version = "=0.1.0", path = "../network" }
+tether-pairing = { version = "=0.1.0", path = "../pairing" }
+tether-protocol = { version = "=0.1.0", path = "../protocol" }
+tether-session = { version = "=0.1.0", path = "../session" }
+tokio = { version = "1.53.3", default-features = false, features = ["io-util", "sync", "time"] }
+
+[target.'cfg(windows)'.dependencies]
+tether-input-windows = { version = "=0.1.0", path = "../input-windows", optional = true }
+
+[dev-dependencies]
+prost = { version = "=0.14.6", default-features = false, features = ["derive", "std"] }
+tether-test-support = { version = "=0.1.0", path = "../test-support" }
+
 [lints]
 workspace = true
 

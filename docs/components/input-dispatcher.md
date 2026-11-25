@@ -32,6 +32,11 @@ never exposes or logs action payloads.
 - A state-changing action is a barrier because only an immediately adjacent
   compatible pointer delta or same-axis scroll delta can coalesce. No
   coalescing crosses any other action.
+- `submit_batch` reserves room and consecutive dispatcher positions for the
+  complete validated batch under one lock. Capacity or position rejection queues
+  no prefix. If a session batch action receives a native rejection, the worker
+  invokes release before executing dependent queued input. Recoverable native
+  errors suspend the dispatcher without clearing any existing terminal fault.
 - Fixed-point sums use widened arithmetic and the domain constructors. If a sum
   would exceed `MAX_ABSOLUTE_FIXED_DELTA`, the existing item is left intact and
   the incoming delta becomes a separate queue entry. It is never wrapped,
@@ -48,6 +53,9 @@ waiting action. An already executing native call cannot be preempted safely; it
 finishes before the higher-positioned release barrier runs. Concurrent release
 requests share a ticket and may upgrade the pending reason by severity rather
 than enqueueing unbounded cleanup requests.
+When a terminal release stops the worker, any newer pending release ticket
+completes from the observed terminal release report and actual terminal reason.
+Ordinary work stays closed while a newer release is waiting.
 
 Queue saturation, position exhaustion, impossible held-state transitions,
 uncertain/fatal backend errors, backend panic, explicit stop, connection loss,

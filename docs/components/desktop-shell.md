@@ -225,9 +225,30 @@ persistence.
 
 ## Verification gates
 
+The [personal Windows test scope](../adr/0006-windows-personal-test-build.md)
+uses the local window for private-network selection, pairing and stop.
+The app stores credentials and settings in the protected LocalAppData
+`Tether` directory. WebView2 uses a separate, framework-managed directory.
+Closing the test window ends control and shuts down the listener. Windows
+lock, session disconnect, logoff, and suspend request an immediate stop.
+The owner starts control again after any of these events.
+
 DT-002 must test command input validation, stale revisions, redaction, event
 coalescing, and least-privilege capability snapshots with core services faked.
 DT-003 must prove second launch cannot initialize services and only focuses the
 primary. DT-006 must inject every observable lifecycle event and assert the mock
 backend ends neutral. Native package gates separately validate tray behavior,
 autostart, single-instance mechanics, permissions, and quit on each claimed OS.
+
+## Windows personal build
+
+Closing the main window leaves its tray icon, listener and session monitor
+running. Left-click the icon to reopen the window. Right-click for status,
+Stop control and listening, or Quit Tether. Launching the executable again
+also restores the existing window.
+
+The desktop checkbox registers the quoted current executable and its
+`--start-in-tray` argument in the current Windows user's Run key. The UI
+reads back the registration and reports Windows Startup Apps overrides.
+Keep the executable in its chosen location or enable the option again after
+moving it. Starting at sign-in leaves private-network selection manual.

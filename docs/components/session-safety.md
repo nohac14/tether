@@ -2,9 +2,17 @@
 
 **Task:** SS-001
 
-**Status:** Implementation contract complete. SS-002's receipt and transactional
-admission prerequisites are implemented; its actor/coordinator and SS-003/004
-runtime verification remain incomplete.
+**Status:** SS-002 ownership and SS-003 application heartbeat components are
+implemented and tested with a mock backend. Production reactor composition and
+the full cross-component fault suite remain downstream.
+
+The connection registry reserves one lease per paired device before hello.
+Duplicate connections return the same closed capacity category as an exhausted
+registry. A retry can register after the actor observes and removes the retired
+lease. Ownership still requires a validated hello and an explicit request.
+The connection writer's encoder uses the capabilities captured by the actor at
+hello, enforces the negotiated wire size and numbers subsequent control and
+heartbeat updates in removal order.
 
 **Authority:** `SPEC.md` sections 11, 15–16, 17.6, 19–21 and 33;
 [protocol](protocol.md), [wire validation](protocol-validation.md),
@@ -14,8 +22,11 @@ runtime verification remain incomplete.
 ## Trust and execution boundary
 
 One Rust session actor serializes control authority for one dispatcher/backend.
-The implemented [admission cursor](session-admission.md) supplies ordered
-connection-local staging only, not that actor or any authority to execute input.
+The [admission cursor](session-admission.md) supplies ordered connection-local
+staging. `tether_session::actor::SessionActor` owns control authority through an
+exclusive borrow of the dispatcher. Its reactor polls reserved decisions,
+deadlines and receipts before accepting normal input, including during idle
+connections. Transport writers take bounded output separately.
 Only the actor submits native-domain actions. Transport tasks, pairing, lifecycle
 adapters, UI and Tauri request typed events; none inject input or grant ownership.
 The dispatcher worker remains the backend's exclusive owner. Session handling
@@ -166,13 +177,22 @@ terminal fault always remains terminal regardless of a later weaker reason.
 
 Raw transport Ping/Pong, typed input or arbitrary TCP activity never refreshes
 page-runtime liveness. Heartbeat and hello deadlines use injected server
-monotonic time; no comparisons against client wall time. SS-003 starts with
+monotonic time; no comparisons against client wall time. SS-003 uses
 1,000/4,000 ms interval/timeout under the protocol's hard policy and tests
 deadline equality, delayed scheduling, clock overflow and open-socket inactivity.
 An expired deadline wins over later processing of a queued heartbeat; receipt
 timestamps are server-monotonic observations, never browser assertions. Backend
 completion and ordinary input traffic do not extend the deadline.
 Normal connection closure is not global network quiescence.
+
+The session starts its application heartbeat deadline when it queues a valid
+server hello. It renews the deadline only after validating and committing a
+client heartbeat and accepting the bounded pong. The browser maintains a small
+list of sent identifier/timestamp pairs for local RTT measurement. It schedules
+from the current monotonic time after each tick, checks timeout before sending or
+accepting a pong, and starts with fresh identifiers and timers on reconnect.
+Browser heartbeat expiry and write failure ask the connection owner to close
+the transport. The desktop deadline independently owns server-side cleanup.
 
 ## Priority, cancellation and resource bounds
 
@@ -203,6 +223,13 @@ invokes release-all rather than dropping them.
 The NW-003 bridge's Neutral acknowledgement requires both obsolete-session
 teardown and confirmed dispatcher neutrality. Transport generation is not a
 session epoch, and a missing/unpublished generation does not skip global cleanup.
+`ListenerSessionSafety` requests one shared actor quiescence ticket. The actor
+observes it before normal work, closes obsolete leases, and acknowledges after a
+fresh epoch and confirmed release. A stronger shutdown supersedes retirement
+in the same slot. A superseded retirement reports unavailable for rebind.
+Caller cancellation leaves release outstanding. Timeout or
+actor loss reports failure. The actor can start without a published generation
+and only accepts the first or a strictly newer generation after recovery.
 Drive its existing two-second quiescence deadline independently. Timeout keeps
 input disabled, reports failure, continues best effort and forbids late regrant;
 it is not a guarantee of preempting a blocked OS call. Error delivery, outbound
@@ -213,6 +240,17 @@ No actor or RAII policy can execute after uncatchable process termination,
 power loss or OS failure. Preserve D-05's exact guarantee: initiate idempotent
 cleanup on every observable/graceful path, validate the outcome, and honestly
 report unavailable native cleanup rather than fabricating neutral state.
+
+The actor retains up to eight verified leases with eight outputs each and up
+to 256 dispatcher receipts, capped further by dispatcher capacity. It charges
+the fixed sizes of input records and receipt records plus UTF-8 text bodies to
+a 128 KiB retained-input budget. The actor processes one bounded envelope at a
+time. The network bridge owns its separate inbound and outbound IO budgets.
+Scoped teardown uses each connection's lease flag. Global commands share one
+atomic signal, with transport retirement and shutdown overriding recoverable
+stops. Dropping a connection lease requests scoped teardown. Actor drop
+requests best-effort release while dispatcher ownership and joining remain at
+the composition root.
 
 ## SS-002/003/004 verification gates
 
@@ -236,6 +274,7 @@ Enumerate all state/event pairs and assert:
 8. Bounds, accounted bytes, safe errors/diagnostics and explicit backend capability
    rejection hold under deterministic long traces and adversarial scheduling.
 
-SS-001 completes this written model/trigger contract only. These runtime tests,
-physical device/native checks, authentication and real LAN admission have not run
-and are not marked complete by documentation review.
+The [ownership and heartbeat checkpoint](../manual-tests/2026-11-20-session-control.md)
+records mock execution, expiry, cancellation and dispatcher race tests. SS-004
+still covers fault propagation across the composed reactor, storage, transport
+and native lifecycle boundaries.

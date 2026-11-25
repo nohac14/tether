@@ -1,13 +1,22 @@
 # Tether open risks and validation register
 
 **Status:** Active  
-**Last reviewed:** 2026-11-19
+**Last reviewed:** 2026-11-21
 **Scope:** Remaining uncertainty after the accepted architecture decisions.
 
 This register contains validation risks, not permission to weaken `SPEC.md`.
 Closing a risk requires recorded evidence from the named gate. A failed gate
 must narrow the support claim, disable the capability, or produce an ADR; it
 must not be converted into an undocumented workaround.
+
+The [standalone Windows test executable checkpoint](manual-tests/2026-11-21-windows-personal-test-build.md)
+records protected startup and loopback pairing with mock input. Physical
+LAN reachability, firewall behavior, native input release on lifecycle
+events, installed recovery, and Windows discovery still require validation.
+R-018 also tracks an intermittent unpublished-pairing rollback test result.
+The checkpoint records the failure and the successful reruns.
+The same checkpoint records a Windows TCP port exclusion which stopped the
+initial test. The build now lets the owner select another port explicitly.
 
 ## Severity and state
 
@@ -21,12 +30,12 @@ must not be converted into an undocumented workaround.
 
 ## Risk register
 
-ADR 0004 records the owner's Windows-first request without a Windows test
-machine. Windows builds may be produced as unvalidated development artifacts;
-R-006/R-015/R-018 remain open. SDK/CRT license use and scoped tool
-acquisition are now explicitly owner-approved, while native build/test
-access remains unavailable, not inferred from cross-target compilation. Linux work
-is deferred; R-019 is retained rather than suppressed or reported resolved.
+ADR 0004 prioritizes Windows development artifacts. The Windows 11 x64 host
+now links the desktop skeleton with MSVC, and the `SendInput` export resolves.
+Guarded input, storage security, application validation and cross-SDK provenance
+remain open under R-006/R-015/R-018/R-023. Linux work is deferred and R-019
+remains open. See the
+[Windows checkpoint](manual-tests/2026-11-19-windows-foundation.md).
 
 | ID | Severity | State | Risk and impact | Required validation / exit criterion | Plan gate |
 | --- | --- | --- | --- | --- | --- |
@@ -47,7 +56,15 @@ is deferred; R-019 is retained rather than suppressed or reported resolved.
 | R-015 | Release blocker | Open | Actual hardware, signed identities, and clean OS installations may not be available for every intended target. | Create a test inventory before release work. A missing configuration is either acquired/tested or removed from the support claim; CI/cross-compilation never substitutes for evidence. | A-004, IT-006, RL-002 |
 | R-016 | Release blocker | Open | Malformed/flooded clients can exhaust parser, connection, session, dispatcher, or OS input queues and could starve release work. | Fuzz/load tests demonstrate bounded memory, CPU, connections, messages, and queued bytes. Saturation clears discardable motion, executes priority release, closes the session, and leaves the mock/native backend neutral. | PR-004, NW-007, IT-002, IT-004 |
 | R-017 | Tracked | Open | Browsers may purge persistent cookies or segregate storage for bookmarks/home-screen modes, causing apparent credential loss. | Test normal tabs, bookmarks, private modes as applicable, and supported home-screen conveniences. Loss returns to an understandable re-pair flow and never exposes the credential to JavaScript. | PA-001–PA-003, IT-005 |
-| R-018 | Release blocker | Open | Rust standard filesystem APIs provide the required lifetime locking and replacement primitives on current Windows, but do not expose explicit owner DACL construction or complete reparse/hard-link inspection. ST-002 and ST-003 therefore fail closed on Windows rather than accepting inherited ACLs as compliant. | Select and security-review a maintained safe Windows ACL/reparse implementation or approve a narrowly isolated audited Windows FFI boundary; cross-compile it and validate owner/System/Administrators access, broad-inheritance removal, reparse/hard-link attacks, lock contention, settings/identity replacement, power-loss recovery, reset, and upgrade behavior on actual Windows 11 before enabling persistent state. | ST-002/ST-003 Windows follow-up, IT-004, PK-001 |
+| R-018 | Release blocker | Open | Windows settings, identity and paired devices share ADR 0005's DACL and handle checks. Forty-one unelevated Windows configuration tests passed, including paired-device restart and injected commit failures. Unsupported permissions, broad or inherited ACLs and unsafe entries fail closed. | Independently review the Windows boundary and qualify installed storage with a clean upgrade, actual interruption/recovery and production pairing/session integration. | ST-002/ST-003 Windows follow-up, PA-003, IT-004, PK-001 |
+
+[Accepted ADR 0005](adr/0005-windows-private-storage.md) scopes the Win32 calls
+and native checks. The [Windows storage checkpoint](manual-tests/2026-11-19-pairing-and-assets.md#windows-storage)
+records the owner's approval, the initial sandbox failure and the passing test run.
+
+R-005 now has [headless Edge evidence](manual-tests/2026-11-21-mobile-text-entry.md)
+for trusted activation, confirmed composition, and single backspace delivery.
+The physical software-keyboard and Compose and Send checks remain open.
 
 ## 2026-11-14 tooling security refresh
 
@@ -79,9 +96,11 @@ official VS 17 release and VS 18 stable channel metadata both advertise a
 manifest payload digest/size that differs from the corresponding HTTPS body.
 No SDK payload was used. xwin 0.10.0's source omits that manifest checksum check;
 do not treat the tool's default omission as satisfying Tether's provenance gate.
-Resolve using matching authenticated Microsoft metadata/artifacts, or a reviewed
-native Windows build environment, before qualifying WB-001. The official LLVM
-archive hash/attestation verifies; no TLS/DNS/security checks were disabled.
+The owner-approved native Windows MSVC setup now provides the linker and SDK
+through Microsoft's installer and passes workspace linking. Cross-SDK
+acquisition still requires matching authenticated Microsoft metadata and
+artifacts. The official LLVM archive hash/attestation verifies; no
+TLS/DNS/security checks were disabled.
 Detailed expected/observed hashes are in the
 [dated checkpoint](manual-tests/2026-11-14-protocol-tooling.md). R-018 is separate:
 an executable built elsewhere still cannot enable Windows persistence until
@@ -110,6 +129,10 @@ registration, exact local scoped A/AAAA/SRV/TXT, browse add/removal and graceful
 stop now pass; physical phone and packet containment have not run.
 Validate per-interface containment, custom-host A/AAAA, multiple addresses in
 one RRset, conflicts, withdrawal, daemon/permission failure and native lifecycle.
+The Windows candidate projection rejects ambiguous or unsupported native
+scopes and retains all existing IP fallback endpoints. No Windows
+registration or LAN containment test has run.
+[Discovery contract](components/discovery.md)
 Synchronous system calls can stall despite readiness: DS-003 must isolate the
 owner and bound external waits without unsafe concurrent deallocation.
 D-03 is unchanged. DS-002 is in progress; DS-003 remains blocked. See the
@@ -214,8 +237,9 @@ for that personal configuration; R-012 remains open for broader untested
 conditions, packaged identity, and expansion platforms. See
 [the scoped physical evidence](manual-tests/2026-10-25-iphone-safari-lan.md).
 `manual-tests/test-environment-setup.md` now prefers
-Windows preparation and assessment of Linux VM capacity; no VM or Windows
-validation has run. R-006, R-008–R-010, R-012, R-015, and R-018 remain open;
+Windows preparation and assessment of Linux VM capacity. The November 19
+Windows checkpoint adds host inventory and inert input-mapper evidence.
+R-006, R-008–R-010, R-012, R-015, and R-018 remain open;
 neither cross-compilation nor ARM emulation/virtualization satisfies their
 missing physical-device, target-architecture, permission, or native test gates.
 
@@ -228,6 +252,47 @@ automatic restoration remains closed when context is unknown. Darwin's short
 socket-creation/close-on-exec window must be addressed by the future child-spawn
 layer's close-default/serialization policy. See the
 [provider checkpoint](manual-tests/2026-10-25-interface-provider.md).
+
+The [Windows profile and TCP checkpoint](manual-tests/2026-11-20-windows-network-profiles-and-tcp.md)
+records native IP Helper and Network List Manager queries plus loopback
+socket checks. Windows profile metadata invalidates approvals when a
+change is observed. Independent continuity for automatic startup and
+rebind, physical DHCP, multi-adapter containment, Windows firewall
+behavior and native IPv6 LAN reachability remain open.
+
+The [listener supervisor checkpoint](manual-tests/2026-11-20-listener-supervisor.md)
+adds loopback authority revocation and mock dispatcher release evidence.
+The production session and input coordinator, timing under actual LAN
+traffic, and same-port rebinding after active Windows connections still
+need qualification.
+
+The [HTTP and mobile-shell checkpoint](manual-tests/2026-11-20-http-and-mobile-shell.md)
+adds raw HTTP framing tests and Windows loopback serving through the
+supervisor. Published `.local` aliases and actual IPv6 LAN reachability
+remain downstream. The appearance gutter is provisional pending iOS
+and Android edge-gesture testing.
+
+The [mobile control checkpoint](manual-tests/2026-11-20-mobile-controls.md)
+adds simulated tap timing, drag/capture cancellation, bounded momentum, and
+ordered Protobuf batch evidence in a browser mock. R-004 and R-014 still need
+physical device and Windows input behavior. R-016 still needs production
+WebSocket congestion and server-side neutralization evidence.
+
+The [ownership and heartbeat checkpoint](manual-tests/2026-11-20-session-control.md)
+adds mock neutralization after abort, timeout, transport retirement, ownership
+transfer and queue saturation. R-016 still needs production transport load and
+native release validation.
+
+The [Windows pairing checkpoint](manual-tests/2026-11-21-windows-pairing.md)
+adds HTTP-to-store credential publication, scoped revocation, browser cookie
+receipt and inert Win32 record verification. R-006 still needs insertion in an
+isolated interactive Windows session. R-018 still needs installed storage
+recovery, and R-016 needs real WebSocket and native backend composition.
+
+The [listener safety checkpoint](manual-tests/2026-11-21-listener-session-safety.md)
+adds a mock supervisor/actor rebind with held input, a dropped cleanup ticket,
+and an unconfirmed release deadline. R-016 retains its live transport and
+native release conditions.
 
 DS-002's subsequent source review now proves mdns-sd 0.21.6 cannot establish
 the exact allowlist before its worker's initial multicast setup. It is not
@@ -263,3 +328,7 @@ These choices may narrow support or tune implementation parameters. They may
 not introduce cloud services, privilege escalation, hidden clipboard/keymap
 mutation, generic scroll gestures in place of the dedicated regions, or weaker
 input cleanup.
+
+The Windows personal tray build still needs an actual sign-out/sign-in and
+phone session across window close. The native tray and hidden-launch evidence
+is in the [Windows test record](manual-tests/2026-11-21-windows-personal-test-build.md#windows-tray-and-startup-on-2026-11-25).

@@ -1,7 +1,7 @@
 # Provisioning Tether validation environments
 
 **Status:** Setup guide; no environment provisioned or native test passed by this document
-**Last checked:** 2026-10-16
+**Last checked:** 2026-11-19 for Windows; 2026-10-16 otherwise
 **Authority:** `SPEC.md`, D-02/D-05, `environment-inventory.md`, and `../implementation-plan.md`
 
 ## Choose the machines before downloading images
@@ -53,12 +53,10 @@ outgrows its disk, add storage before proceeding. Run no second VM concurrently.
 Use external storage or another host before retaining additional full desktop
 images and snapshots.
 
-The owner subsequently reported a Windows 11 AMD PC. Prefer that machine for
-native Windows preparation, and assess its RAM/free disk before deciding
-whether it can also host separate Linux x86-64 desktop VMs. The Mac ARM64 VM
-route below remains optional, not the required first step. No Windows access,
-guest provisioning, or native test has occurred. Physical Android hardware
-is still missing. No purchase or support-policy change is implied.
+The Windows 11 x64 candidate is available for native Windows preparation. Assess
+its RAM and free disk space before deciding whether it can also host separate
+Linux x86-64 desktop VMs. The Mac ARM64 VM route below is optional. Linux guest
+provisioning and physical Android validation remain pending.
 
 On a larger host, resource planning may start at 4–8 GiB RAM, 2–4 vCPUs, and a
 dynamically allocated 40–60 GiB disk. Those are estimates, not platform minimums,
@@ -156,9 +154,43 @@ administrator or unrestricted account access.
 
 Use an existing Intel/AMD Windows 11 machine or a Windows 11 x86-64 VM on an
 Intel/AMD host. Keep the desktop interactive and run the app unelevated.
-Preparation includes the pinned Rust toolchain, MSVC C++ build prerequisites,
-and a separate checkout. Windows storage remains disabled under R-018 until
-its DACL/reparse solution is implemented, reviewed, and tested.
+The [Windows checkpoint](2026-11-19-windows-foundation.md) records the current
+PC and completed checks. Windows persistence is gated by R-018's DACL and
+reparse-point implementation, review, and tests.
+
+For the repository's MSVC target, use the pinned Rust toolchain and Microsoft's
+standalone Visual Studio C++ Build Tools. The Build Tools provide the x64
+linker and libraries. Visual Studio Code is optional and can be replaced by any
+editor. Select **Desktop development with C++**, the x64/x86 MSVC component, and
+the Windows 11 SDK in the Microsoft installer. Use the x64 developer shell and
+record the installed linker and SDK versions in the test evidence.
+[Microsoft command-line setup](https://learn.microsoft.com/en-us/cpp/build/building-on-the-command-line)
+
+Run the locked checks from the repository after provisioning. These tests use
+an inert sink and can run without an interactive input target.
+
+```powershell
+rustc -vV
+cargo check -p tether-input-windows --all-targets --all-features --locked
+cargo clippy -p tether-input-windows --all-targets --all-features --locked -- -D warnings
+cargo test -p tether-input-windows --locked
+```
+
+Desktop executable builds also use the workspace's pinned Node.js 24.19.0,
+pnpm 11.25.0 and locked Vite installation. From the x64 developer shell, put
+the pinned Node on PATH or set `TETHER_BUILD_NODE` to its absolute executable
+path. The Cargo build script generates and verifies the embedded bundle
+directly from source.
+
+```powershell
+pnpm install --frozen-lockfile --ignore-scripts
+cargo --config 'target.x86_64-pc-windows-msvc.rustflags=["-C","target-feature=+crt-static"]' build -p tether-desktop --release --target x86_64-pc-windows-msvc --locked
+```
+
+For the current build checkpoint, run the resulting executable with
+`--verify-mobile-bundle` to validate the embedded data without starting a
+listener. Node and the frontend workspace are build-time inputs.
+[Windows mobile bundle evidence](2026-11-20-mobile-bundle.md)
 
 Optional SSH access uses Microsoft's
 [in-box OpenSSH Server](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse)

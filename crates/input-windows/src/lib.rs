@@ -1,18 +1,29 @@
-//! Windows `SendInput` translation spike.
-//!
-//! This crate currently builds native event plans and exercises them through an
-//! inert sink. It does not call `SendInput` in normal tests and is not the
-//! production backend from WIN-002.
+//! Windows `SendInput` adapter and inert translation plans.
 
 use std::collections::BTreeSet;
 use std::fmt;
+
+#[cfg(windows)]
+mod live;
+#[cfg(windows)]
+mod native_records;
+#[cfg(windows)]
+pub use live::WindowsBackend;
 use tether_input_core::{
     BackendCapabilities, BackendError, BackendErrorCategory, BackendKind, BackendStatus,
-    ButtonAction, CapabilityState, ClickCount, DesktopShortcutPlatform, InputAction, KeyAction,
-    LOGICAL_COMMANDS, MediaCommand, MouseButton, OperationClass, PermissionState, PhysicalKey,
-    RetryScope, ScrollAxis, StatusRefreshReason, TextEditCommand, TextMode,
-    canonical_logical_chord,
+    ButtonAction, CapabilityState, ClickCount, DesktopShortcutPlatform, FIXED_POINT_SCALE,
+    InputAction, KeyAction, LOGICAL_COMMANDS, MediaCommand, MouseButton, NativeUnitQuantum,
+    OperationClass, PermissionState, PhysicalKey, PointerUnitTranslator, RetryScope, ScrollAxis,
+    ScrollDelta, StatusRefreshReason, TextEditCommand, TextMode, canonical_logical_chord,
 };
+
+/// Win32 `WHEEL_DELTA`, used for both wheel axes.
+const WHEEL_DELTA: i64 = 120;
+const POINTER_QUANTUM: NativeUnitQuantum =
+    match NativeUnitQuantum::new(FIXED_POINT_SCALE.unsigned_abs()) {
+        Ok(quantum) => quantum,
+        Err(_) => panic!("fixed-point scale must be positive"),
+    };
 
 /// Result of bounded, non-injecting Windows environment inspection.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -32,7 +43,7 @@ impl WindowsProbe {
 }
 
 /// Pure event description corresponding to one future `INPUT` record.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum WindowsEvent {
     RelativeMotion {
         dx: i32,
@@ -70,6 +81,9 @@ impl fmt::Debug for WindowsEvent {
 /// Pure Windows action translator shared by inert and future live sinks.
 pub struct WindowsMapper {
     status: BackendStatus,
+    pointer: PointerUnitTranslator,
+    horizontal_wheel_remainder: i64,
+    vertical_wheel_remainder: i64,
 }
 
 impl WindowsMapper {
@@ -103,6 +117,9 @@ impl WindowsMapper {
                 capabilities,
                 fault: None,
             },
+            pointer: PointerUnitTranslator::new(POINTER_QUANTUM, POINTER_QUANTUM),
+            horizontal_wheel_remainder: 0,
+            vertical_wheel_remainder: 0,
         }
     }
 
@@ -116,6 +133,13 @@ impl WindowsMapper {
         self.status()
     }
 
+    /// Clears sub-unit motion and wheel deltas at a release or epoch boundary.
+    pub fn reset_fractional_state(&mut self) {
+        self.pointer.reset();
+        self.horizontal_wheel_remainder = 0;
+        self.vertical_wheel_remainder = 0;
+    }
+
     /// Translates one platform-neutral action without invoking the OS.
     ///
     /// # Errors
@@ -124,14 +148,15 @@ impl WindowsMapper {
     /// usage has no reviewed Windows scan-code mapping.
     pub fn map(&mut self, action: &InputAction) -> Result<Vec<WindowsEvent>, BackendError> {
         match action {
-            InputAction::PointerMove(delta) => Ok(vec![WindowsEvent::RelativeMotion {
-                dx: delta.x(),
-                dy: delta.y(),
-            }]),
-            InputAction::Scroll(delta) => Ok(vec![WindowsEvent::Wheel {
-                horizontal: delta.axis() == ScrollAxis::Horizontal,
-                delta: delta.amount(),
-            }]),
+            InputAction::PointerMove(delta) => {
+                let pixels = self.pointer.translate(*delta);
+                let (dx, dy) = (pixels.x(), pixels.y());
+                if dx == 0 && dy == 0 {
+                    return Ok(Vec::new());
+                }
+                Ok(vec![WindowsEvent::RelativeMotion { dx, dy }])
+            }
+            InputAction::Scroll(delta) => Ok(self.map_wheel(*delta)),
             InputAction::MouseButton(action) => Ok(map_button(*action)),
             InputAction::PhysicalKey(action) => map_key(*action).map(|event| vec![event]),
             InputAction::TextInsert(text) => Ok(map_unicode(text.expose_for_injection())),
@@ -142,6 +167,24 @@ impl WindowsMapper {
             InputAction::LogicalCommand(command) => map_logical(*command),
             InputAction::MediaCommand(command) => Ok(map_media(*command)),
         }
+    }
+
+    fn map_wheel(&mut self, scroll: ScrollDelta) -> Vec<WindowsEvent> {
+        let horizontal = scroll.axis() == ScrollAxis::Horizontal;
+        let remainder = match scroll.axis() {
+            ScrollAxis::Horizontal => &mut self.horizontal_wheel_remainder,
+            ScrollAxis::Vertical => &mut self.vertical_wheel_remainder,
+        };
+        let total = i64::from(scroll.amount()) * WHEEL_DELTA + *remainder;
+        let scale = i64::from(FIXED_POINT_SCALE);
+        // A whole normalized unit maps to one detent. Keep the remainder in
+        // the scaled numerator so sub-detent conversion has no rounding drift.
+        let delta = i32::try_from(total / scale).expect("bounded scroll fits wheel units");
+        *remainder = total % scale;
+        if delta == 0 {
+            return Vec::new();
+        }
+        vec![WindowsEvent::Wheel { horizontal, delta }]
     }
 }
 
@@ -339,7 +382,8 @@ mod tests {
     use super::*;
     use tether_input_core::{
         InertConformanceBackend, InertConformanceMapper, InertConformanceSink, InertSinkError,
-        InputBackend, SensitiveText, run_backend_conformance,
+        InputBackend, MAX_ABSOLUTE_FIXED_DELTA, PointerDelta, ReleaseFailure, SensitiveText,
+        run_backend_conformance,
     };
 
     #[derive(Default)]
@@ -374,6 +418,11 @@ mod tests {
         fn map(&mut self, action: &InputAction) -> Result<Vec<Self::Event>, BackendError> {
             self.map(action)
         }
+
+        fn reset_local_state(&mut self) -> Result<(), ReleaseFailure> {
+            self.reset_fractional_state();
+            Ok(())
+        }
     }
 
     fn backend() -> InertConformanceBackend<WindowsMapper, RecordingSink> {
@@ -391,6 +440,78 @@ mod tests {
         assert!(report.checked_actions > 200);
         assert!(report.explicitly_unsupported_mappings > 0);
         assert_eq!(backend.held_counts(), (0, 0));
+    }
+
+    #[test]
+    fn relative_motion_converts_to_pixels_and_keeps_independent_fractions() {
+        let mut mapper = WindowsMapper::from_probe(WindowsProbe::inert_ready());
+        let half = FIXED_POINT_SCALE / 2;
+        for (dx, dy, expected) in [
+            (half, -half, None),
+            (half, 0, Some((1, 0))),
+            (-half, -half, Some((0, -1))),
+            (half, half, None),
+            (0, -half, None),
+            (
+                MAX_ABSOLUTE_FIXED_DELTA,
+                -MAX_ABSOLUTE_FIXED_DELTA,
+                Some((8_192, -8_192)),
+            ),
+        ] {
+            let action = InputAction::PointerMove(PointerDelta::new(dx, dy).expect("fixture"));
+            let events = mapper.map(&action).expect("motion plan");
+            match expected {
+                Some((dx, dy)) => assert_eq!(events, [WindowsEvent::RelativeMotion { dx, dy }]),
+                None => assert_eq!(events, []),
+            }
+        }
+    }
+
+    #[test]
+    fn wheel_conversion_keeps_sign_and_sub_detent_precision_per_axis() {
+        let mut mapper = WindowsMapper::from_probe(WindowsProbe::inert_ready());
+        for (axis, amount, expected) in [
+            (ScrollAxis::Horizontal, -FIXED_POINT_SCALE, -120),
+            (ScrollAxis::Vertical, FIXED_POINT_SCALE - 1, 119),
+            (ScrollAxis::Horizontal, 1, 0),
+            (ScrollAxis::Vertical, 1, 1),
+            (ScrollAxis::Horizontal, -1, 0),
+            (ScrollAxis::Horizontal, -FIXED_POINT_SCALE / 2, -60),
+            (ScrollAxis::Vertical, MAX_ABSOLUTE_FIXED_DELTA, 983_040),
+            (ScrollAxis::Vertical, -MAX_ABSOLUTE_FIXED_DELTA, -983_040),
+        ] {
+            let action = InputAction::Scroll(ScrollDelta::new(axis, amount).expect("fixture"));
+            let events = mapper.map(&action).expect("wheel plan");
+            if expected == 0 {
+                assert_eq!(events, []);
+            } else {
+                assert_eq!(
+                    events,
+                    [WindowsEvent::Wheel {
+                        horizontal: axis == ScrollAxis::Horizontal,
+                        delta: expected,
+                    }]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn release_discards_fractional_motion_and_scroll() {
+        let mut backend = backend();
+        let half = FIXED_POINT_SCALE / 2;
+        let motion = InputAction::PointerMove(PointerDelta::new(half, -half).expect("fixture"));
+        let horizontal =
+            InputAction::Scroll(ScrollDelta::new(ScrollAxis::Horizontal, 8).expect("fixture"));
+        let vertical =
+            InputAction::Scroll(ScrollDelta::new(ScrollAxis::Vertical, -8).expect("fixture"));
+        for _ in 0..2 {
+            for action in [&motion, &horizontal, &vertical] {
+                backend.execute(action).expect("inert accumulation");
+            }
+            assert_eq!(backend.sink().events, []);
+            assert!(backend.release_all().is_confirmed_neutral());
+        }
     }
 
     #[test]

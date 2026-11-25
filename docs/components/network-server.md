@@ -62,6 +62,15 @@ select or validate all product-default behavior.
   Port changes do not isolate cookie storage: browser cookies are host-scoped,
   not port-scoped. The active port still participates in Host/Origin checks.
 
+The Windows personal test window offers 55001, 57181, and 59631 as alternatives
+to 54321. It uses the last explicitly selected port for the next proposal.
+A bind denied by Windows or an occupied port leaves the listener stopped
+and prompts the owner to choose another port. The same selected port is used
+for every bound address and for the QR URL.
+Once the supervisor confirms the bound set, the control inbox activates
+the current generation using the same monotonic clock as session polling.
+The desktop publishes the QR only after this activation succeeds.
+
 ## Inventory, selection, and peer policy
 
 Expose revisioned, bounded `InterfaceSnapshot` values: opaque ID and its
@@ -126,6 +135,38 @@ APIs, environment dumps, source maps, developer-server endpoints, or the probe
 in production. The mobile app can use in-page navigation; adding a real entry
 path requires an explicit allowlist/cache test rather than catch-all serving.
 
+`tether_network::assets::EmbeddedAssets` builds responses from static byte
+slices and an exact build manifest. It validates a separate root entry and at
+most 256 one-level ASCII asset keys using the Vite default eight-character
+filename hash. It verifies supported media types and the 4 MiB per-entry and
+16 MiB total limits. Immutable entries receive strong SHA-256 ETags, with
+bounded weak comparison for `If-None-Match` on GET and HEAD. Missing paths,
+queries, absolute targets, request bodies, and unsupported methods receive
+empty errors without request values. The CSP uses a policy built from the
+approved binding authority. The server adapter still owns raw framing, peer,
+Host/Origin checks and approved-interface binding. The production Vite manifest
+is now validated during the desktop build. The pinned offline build emits a
+single HTML entry and hashed assets, checks the manifest against emitted
+files, and generates `include_bytes!` references in the Cargo output directory.
+The executable uses that compiled manifest through `EmbeddedAssets`. The
+HTTP adapter accepts the supervisor's transport and retains its generation
+and quota guards. It bounds each raw head before parsing, preserves header
+multiplicity, rejects ambiguous lengths and body framing, and admits only
+the accepted local endpoint or its current-generation advertised alias.
+Each poll of the socket checks revocation. Listener generation numbers
+are unique within the process even when the core replaces a supervisor.
+The desktop core still needs to drive the listener and spawn this adapter
+on a runtime.
+
+The asset service applies five seconds for headers, ten seconds for a
+complete request and response, ten seconds between keep-alive requests,
+and at most 32 requests per connection. Shared request budgets cap each
+canonical peer and the whole service. An omitted port means HTTP port 80.
+For the other ports, Host and any Origin must include the active port.
+[HTTP and mobile-shell checkpoint](../manual-tests/2026-11-20-http-and-mobile-shell.md)
+[Mobile bundle build](../manual-tests/2026-11-20-mobile-bundle.md)
+[HTTP validator semantics](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2)
+
 Reject request bodies on static/upgrade routes. Pairing requires exact
 `application/json`, bounded strict types, and rejects content encoding, unknown
 fields, duplicate security fields, trailing data, and malformed Unicode.
@@ -136,6 +177,17 @@ pending request, and never appears in a URL, log, or local storage. Completion
 must be single-consumer and bound to the pending request/host scope. Its entropy,
 expiry/race handling and cancellation must pass PA tests before NW-005. No
 credential is exposed in JSON or JavaScript. Desktop approval remains IPC only.
+
+The HTTP/1.1 routes require one canonical positive Content-Length of at most
+4,096 bytes and an exact admitted Origin. They close after each response and
+reuse the existing authority, rate, and request deadline checks. A separate
+pair-request bucket permits an initial burst of three per canonical peer and
+eight globally. Completion also has its per-proof two-second poll minimum.
+The bounded bridge admits at most eight waiting requests and one running
+storage operation. An expired HTTP future drops its response reservation, which fences
+unpublished credentials during durable completion. The cookie expiration header
+uses the same attributes as issuance and is available to the `/control` upgrade
+path. [HTTP pairing evidence](../manual-tests/2026-11-21-windows-pairing.md)
 
 ## Host, Origin, credential, and upgrade validation
 
@@ -170,6 +222,29 @@ require re-pairing; port changes and trailing-dot allowlist normalization never
 promise cookie portability or merge browser cookie stores. No token in hello.
 Non-browser clients can forge Origin, so it never replaces authentication.
 
+The HTTP implementation validates the exact upgrade headers and a single
+canonical device cookie before requesting a store lookup. That lookup uses
+its own eight-item bounded channel and the session actor's monotonic time
+origin. A per-peer bucket allows four attempts initially, then one per second.
+The HTTP adapter rechecks the listener generation after the lookup. The actor
+reserves at most eight connection leases and one lease per device, including
+its pre-hello phase. The HTTP adapter writes 101 only after the caller returns
+a reservation. It passes prefetched bytes to the binary frame reader and
+drops the reservation before attempting a bounded close. When composed with
+`pairing_channel_with_control`, the store's proof reaches the real actor and
+the socket exchanges binary session messages. Tests exercise that composition
+on Windows with a synthetic supervised transport and mock input.
+
+The actor charges messages and expanded operations against both connection
+and shared limits before committing a validated operation. A rate or queue
+failure retires the lease through the reserved release path. Each socket
+can enqueue one input while it waits for the actor's receipt. A 128 KiB
+shared allowance accounts for the bridge's queued payloads. The writer asks
+for the next output only when ready, so it does not duplicate the actor's
+bounded queue.
+[Windows preflight evidence](../manual-tests/2026-11-21-control-upgrade-preflight.md)
+[Frame transport evidence](../manual-tests/2026-11-21-control-websocket.md)
+
 ## Concrete initial resource budgets
 
 These are conservative initial maxima, not measured performance claims.
@@ -178,7 +253,7 @@ contract/tests and load evidence, never a silent retry without limits.
 
 | Resource | Initial maximum / deadline |
 | --- | --- |
-| Interface snapshot | 64 interfaces, 32 addresses each, 256-byte ID / 128-byte name, 32 selected IDs, 64 planned listener addresses; provider overflow fails closed |
+| Interface snapshot | 64 interfaces, 32 addresses each, 256-byte ID / 128-byte name, 32 selected IDs, 64 planned listener addresses. Windows examines at most 128 profile connections with a 2 s refresh wait budget. Provider overflow fails closed. |
 | TCP/HTTP connections | 64 global, 8 per canonical peer; at most one HTTP request executing per connection |
 | Request target / headers | 1,024 target bytes; 32 headers; 16 KiB aggregate, 4 KiB per value; 2 KiB cookie header |
 | HTTP deadlines | Headers 5 s; body 5 s; whole request 10 s; idle keep-alive 10 s; at most 32 requests per HTTP connection |
@@ -280,6 +355,32 @@ passed. NW-001 adds no dependencies, server functionality, or open listener.
 
 ## NW-002 implementation checkpoint
 
+The following Mac record describes an earlier worktree. The tracked Windows
+checkout restores the shared policy and adds an IP Helper inventory adapter.
+The Windows adapter uses documented interface IDs and assigned prefixes, with
+revision changes on different records, link/index changes or failed refreshes.
+It keeps native allocations in an owned module and performs two bounded
+collections per refresh to detect observed inconsistencies. The address policy
+rejects ambiguous literal bindings across the entire inventory and requires an
+on-link peer for the exact bound address and active generation.
+
+IP Helper supplies link and address facts. Network List Manager associates
+active network categories with adapter GUIDs. An unambiguous private profile
+can support a default proposal. Any public association excludes an adapter
+from the default proposals. Domain-authenticated, missing, ambiguous, and unknown profiles
+receive no default proposal. The provider keeps network IDs in memory to
+invalidate old approvals when the observed network changes. The core still
+needs independent continuity evidence before automatic restoration. The
+diagnostic reports only aggregate counts. See the
+[Windows profile checkpoint](../manual-tests/2026-11-20-windows-network-profiles-and-tcp.md).
+
+The Windows provider owns one worker and one outstanding native request.
+The supervisor starts and polls refreshes without waiting for Windows.
+Timeout or read failure retires the current inventory. Cancellation or
+timeout discards a late OS result before fresh work can use that worker.
+The supervisor remains available for stop and lifecycle commands while a
+refresh is pending.
+
 `crates/network/src/interfaces.rs` implements pure validated records, explicit
 current-revision consent, stable versus session-only identities, conservative
 proposal exclusions, settings projections, current-snapshot binding plans, and
@@ -366,6 +467,22 @@ records exact checks and remaining gaps.
 
 ## NW-003 implementation checkpoint
 
+The current checkout implements the supervisor and its Windows driver.
+The driver composes the nonblocking inventory provider with exclusive
+literal binding, IPv6-only sockets, whole-set rollback, and the existing
+64-global/eight-per-peer quota. The supervisor owns the release transition,
+an independent shutdown handle for each retained transport, and an atomic
+revocation guard for each generation. The HTTP owner retains both the
+guard and the Windows quota permit through teardown.
+
+The Windows path takes new observations before binding and before publishing
+the complete set. It requests a new sample at 500 ms while idle and after
+each admitted transport. Pending refreshes pause new acceptance. Any
+observed revision change, refresh failure or clock regression revokes the
+generation and requests reserved release. The core must drive polls on its
+idle schedule and supply the production session/input coordinator. See the
+[listener supervisor checkpoint](../manual-tests/2026-11-20-listener-supervisor.md).
+
 `supervisor.rs` implements the core-owned serialized lifecycle. An
 `ApprovedSelection` is necessary but not sufficient to bind: the local core
 must first commit settings, then `start` requests independent reserved safety
@@ -385,7 +502,7 @@ The supplied generation is the last attempted transport generation, possibly
 unpublished, never an input ownership epoch. It must not cause the coordinator
 to skip mandatory global release merely because no matching session exists.
 
-After Neutral, old connections/listeners close before a candidate set is bound.
+After Neutral, old connections and listeners close before a candidate set is bound.
 Inventory is refreshed immediately before and after the entire bind set; stale
 approval or any bind/metadata failure rolls back all candidates. No wildcard,
 partial readiness, silent port fallback or implicit restart occurs. A new start
@@ -400,7 +517,7 @@ traffic, to revalidate inventory and deadlines. It must prioritize stop/lifecycl
 delivery over normal HTTP work; no network-internal autonomous actor duplicates
 the core coordinator. This implementation makes no deadline guarantee if the
 core stops being scheduled. During Draining, existing connection generations
-are immediately invalid, acceptance stops, and sockets are retained only until
+are immediately invalid, acceptance stops, and sockets are retained until
 neutral acknowledgement or forced closure at failure/timeout. Cleanup failure,
 panic, poisoned state, counter exhaustion or invalid transition permanently
 latches Faulted for that supervisor instance. Later successful release cannot
@@ -418,7 +535,7 @@ authentication or input ownership. Normal authenticated-session disconnect
 cleanup remains the session owner's responsibility, not an unauthenticated
 TCP peer's power to release another controller.
 
-The Mac adapter uses the existing locked Tokio 1.53.3/socket2 0.6.5. It requires
+The historical Mac adapter used the existing locked Tokio 1.53.3/socket2 0.6.5. It required
 an IO-enabled runtime, literal nonblocking addresses, v6-only IPv6 sockets,
 TCP_NODELAY and a backlog request of 64 per listener (the kernel may clamp it).
 Kernel backlog is distinct from the shared admitted-connection bound. Unix
@@ -437,6 +554,13 @@ tests and real mock-dispatcher cleanup.
 No non-loopback listener, multicast, live input, packaged privacy/firewall,
 Windows/Linux runtime, namespace or physical DHCP/IPv6 LAN test ran. See
 [the listener checkpoint](../manual-tests/2026-10-25-listener-supervisor.md).
+
+The core's listener safety adapter uses the session actor's reserved quiescence
+ticket for the supervisor's `NeutralityTicket`. The supervisor revokes transport
+authority first, waits for obsolete session closure and neutral input, then
+closes the old sockets before binding. The new generation is eligible for actor
+recovery only after publication. Mock rebind and timeout evidence is recorded in
+the [listener safety checkpoint](../manual-tests/2026-11-21-listener-session-safety.md).
 
 ### Listener API sources
 

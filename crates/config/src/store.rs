@@ -5,13 +5,18 @@ use crate::identity::{
 use crate::settings::{DesktopSettings, SettingsPayloadV1, SettingsPayloadV2};
 use serde::{Deserialize, Serialize, de::IgnoredAny};
 use std::collections::hash_map::RandomState;
-use std::fs::{self, File, OpenOptions, TryLockError};
+#[cfg(not(windows))]
+use std::fs::OpenOptions;
+use std::fs::{self, File, TryLockError};
 use std::hash::{BuildHasher, Hasher};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(windows)]
+mod windows_storage;
 
 const SETTINGS_FORMAT: &str = "tether.settings";
 const IDENTITY_FORMAT: &str = "tether.identity";
@@ -24,6 +29,37 @@ const SETTINGS_TEMP_PREFIX: &str = ".settings.tmp-";
 const IDENTITY_TEMP_PREFIX: &str = ".identity.tmp-";
 const IDENTITY_QUARANTINE_PREFIX: &str = "identity-corrupt-";
 const MAX_TEMP_ATTEMPTS: u8 = 64;
+
+#[derive(Clone, Copy)]
+struct StoreDocument {
+    name: &'static str,
+    kind: StorageFileKind,
+    temporary_prefix: &'static str,
+    temporary_kind: StorageFileKind,
+    quarantine_prefix: &'static str,
+}
+
+const SETTINGS_DOCUMENT: StoreDocument = StoreDocument {
+    name: SETTINGS_FILE_NAME,
+    kind: StorageFileKind::Settings,
+    temporary_prefix: SETTINGS_TEMP_PREFIX,
+    temporary_kind: StorageFileKind::TemporarySettings,
+    quarantine_prefix: "corrupt-",
+};
+const IDENTITY_DOCUMENT: StoreDocument = StoreDocument {
+    name: IDENTITY_FILE_NAME,
+    kind: StorageFileKind::Identity,
+    temporary_prefix: IDENTITY_TEMP_PREFIX,
+    temporary_kind: StorageFileKind::TemporaryIdentity,
+    quarantine_prefix: IDENTITY_QUARANTINE_PREFIX,
+};
+
+mod devices;
+use devices::DeviceStoreState;
+pub use devices::{
+    DeviceCookie, DeviceEnrollment, DeviceId, DeviceRevision, DeviceRevocation, DeviceStoreStatus,
+    DevicesSnapshot, MAX_DEVICES, PairedDevice, RevocationRequest, VerifiedDevice,
+};
 
 /// Current on-disk settings schema.
 pub const CURRENT_SETTINGS_SCHEMA_VERSION: u32 = 2;
@@ -46,9 +82,11 @@ pub enum StorageFileKind {
     ProcessLock,
     Settings,
     Identity,
+    PairedDevices,
     Quarantine,
     TemporarySettings,
     TemporaryIdentity,
+    TemporaryPairedDevices,
 }
 
 /// Storage I/O phase without a path or content value.
@@ -68,6 +106,7 @@ pub enum StorageIoOperation {
     SyncDirectory,
     Quarantine,
     CleanupTemporary,
+    Remove,
 }
 
 /// Non-sensitive document or filesystem problem category.
@@ -79,6 +118,7 @@ pub enum StorageProblem {
     InvalidRevision,
     InvalidSettings,
     InvalidIdentity,
+    InvalidPairedDevices,
     EncodedLimitExceeded,
     UnsafeEntryKind,
     HardLinkDetected,
@@ -107,6 +147,10 @@ pub enum StorageError {
         found: u32,
         current: u32,
     },
+    UnsupportedDeviceSchema {
+        found: u32,
+        current: u32,
+    },
     RevisionConflict {
         expected: SettingsRevision,
         actual: SettingsRevision,
@@ -120,6 +164,18 @@ pub enum StorageError {
     IdentityResetRequired,
     IdentityResetNotRequired,
     IdentityResetBlockedByPairedDevices,
+    DeviceStoreUnavailable,
+    DeviceNotFound,
+    DeviceLimitReached,
+    InvalidDeviceTime,
+    ApprovalExpired,
+    DeviceRevocationPending,
+    DeviceRevocationNotStarted,
+    StaleDeviceRevocation,
+    DeviceRevisionConflict {
+        expected: Option<DeviceRevision>,
+        actual: Option<DeviceRevision>,
+    },
     ReloadRequired,
     IndeterminateCommit,
     EntropyUnavailable,
@@ -134,6 +190,7 @@ impl std::fmt::Display for StorageError {
             Self::Document { .. } => "local storage document is invalid",
             Self::UnsupportedSchema { .. } => "settings schema is not supported",
             Self::UnsupportedIdentitySchema { .. } => "identity schema is not supported",
+            Self::UnsupportedDeviceSchema { .. } => "paired-device schema is not supported",
             Self::RevisionConflict { .. } => "settings revision is stale",
             Self::RevisionExhausted => "local storage revision space is exhausted",
             Self::IdentityRevisionConflict { .. } => "identity revision is stale",
@@ -143,6 +200,15 @@ impl std::fmt::Display for StorageError {
             Self::IdentityResetBlockedByPairedDevices => {
                 "paired devices must be invalidated before identity reset"
             }
+            Self::DeviceStoreUnavailable => "paired-device storage is unavailable",
+            Self::DeviceNotFound => "paired device is unavailable",
+            Self::DeviceLimitReached => "paired-device limit reached",
+            Self::InvalidDeviceTime => "invalid paired-device time",
+            Self::ApprovalExpired => "pairing approval has expired",
+            Self::DeviceRevocationPending => "paired-device revocation is pending",
+            Self::DeviceRevocationNotStarted => "paired-device revocation has not started",
+            Self::StaleDeviceRevocation => "paired-device revocation request is stale",
+            Self::DeviceRevisionConflict { .. } => "paired-device revision is stale",
             Self::ReloadRequired => "settings must be reloaded before another mutation",
             Self::IndeterminateCommit => "settings replacement requires a reload",
             Self::EntropyUnavailable => "operating-system entropy is unavailable",
@@ -348,9 +414,13 @@ pub struct SettingsStore {
     state: StoreState,
     identity_state: IdentityStoreState,
     identity_status: IdentityLoadStatus,
+    devices: DeviceStoreState,
+    device_revocation: Option<RevocationRequest>,
     reload_required: bool,
     commit_hook: Arc<dyn CommitHook>,
     entropy: Arc<dyn EntropySource>,
+    #[cfg(windows)]
+    _root_guards: windows_storage::RootGuards,
     // Declared last so the process lock is released after all other state.
     _process_lock: File,
 }
@@ -373,14 +443,19 @@ impl SettingsStore {
         root: &Path,
         entropy: Arc<dyn EntropySource>,
     ) -> Result<(Self, LoadStatus), StorageError> {
-        prepare_root(root)?;
-        let root = fs::canonicalize(root).map_err(|error| {
-            io_error(
-                StorageFileKind::Root,
-                StorageIoOperation::InspectEntry,
-                error,
-            )
-        })?;
+        #[cfg(windows)]
+        let (root, root_guards) = windows_storage::prepare_root(root)?;
+        #[cfg(not(windows))]
+        let root = {
+            prepare_root(root)?;
+            fs::canonicalize(root).map_err(|error| {
+                io_error(
+                    StorageFileKind::Root,
+                    StorageIoOperation::InspectEntry,
+                    error,
+                )
+            })?
+        };
         let process_lock = acquire_process_lock(&root)?;
         cleanup_abandoned_temporaries(
             &root,
@@ -392,14 +467,19 @@ impl SettingsStore {
             IDENTITY_TEMP_PREFIX,
             StorageFileKind::TemporaryIdentity,
         )?;
+        devices::cleanup_device_temporaries(&root)?;
         let mut store = Self {
             root,
             state: StoreState::RecoveryRequired,
             identity_state: IdentityStoreState::ResetRequired,
             identity_status: IdentityLoadStatus::ResetRequired,
+            devices: DeviceStoreState::Unbound,
+            device_revocation: None,
             reload_required: false,
             commit_hook: Arc::new(NoopCommitHook),
             entropy,
+            #[cfg(windows)]
+            _root_guards: root_guards,
             _process_lock: process_lock,
         };
         let allow_identity_creation = !entry_exists_no_follow(
@@ -418,6 +498,7 @@ impl SettingsStore {
         if !allow_identity_creation {
             store.identity_status = store.load_or_initialize_identity(false)?;
         }
+        store.load_devices()?;
         Ok((store, status))
     }
 
@@ -539,6 +620,7 @@ impl SettingsStore {
         self.commit_identity_snapshot(&snapshot)?;
         self.identity_state = IdentityStoreState::Ready(snapshot.clone());
         self.identity_status = IdentityLoadStatus::Created;
+        self.reset_device_state_for_identity();
         Ok(snapshot)
     }
 
@@ -572,6 +654,7 @@ impl SettingsStore {
         self.commit_identity_snapshot(&snapshot)?;
         self.identity_state = IdentityStoreState::Ready(snapshot.clone());
         self.identity_status = IdentityLoadStatus::Loaded;
+        self.reset_device_state_for_identity();
         Ok(snapshot)
     }
 
@@ -600,6 +683,7 @@ impl SettingsStore {
             if !allow_identity_creation {
                 self.identity_status = self.load_or_initialize_identity(false)?;
             }
+            self.load_devices()?;
             Ok(status)
         })();
         match result {
@@ -642,7 +726,7 @@ impl SettingsStore {
                 Ok(LoadStatus::Migrated { from })
             }
             Err(error) if error.is_corrupt_document() => {
-                quarantine_settings(&self.root)?;
+                quarantine_document(&self.root, SETTINGS_DOCUMENT)?;
                 self.state = StoreState::RecoveryRequired;
                 Ok(LoadStatus::RecoveryRequired)
             }
@@ -673,7 +757,7 @@ impl SettingsStore {
                 Ok(IdentityLoadStatus::Loaded)
             }
             Err(error) if error.is_corrupt_document() => {
-                quarantine_identity(&self.root)?;
+                quarantine_document(&self.root, IDENTITY_DOCUMENT)?;
                 self.identity_state = IdentityStoreState::ResetRequired;
                 Ok(IdentityLoadStatus::ResetRequired)
             }
@@ -709,44 +793,12 @@ impl SettingsStore {
 
     fn commit_snapshot(&mut self, snapshot: &SettingsSnapshot) -> Result<(), StorageError> {
         let bytes = encode_snapshot(snapshot)?;
-        let destination = self.root.join(SETTINGS_FILE_NAME);
-        if entry_exists_no_follow(
-            &destination,
-            StorageFileKind::Settings,
-            StorageIoOperation::InspectEntry,
-        )? {
-            validate_regular_file(&destination, StorageFileKind::Settings)?;
-        }
-
-        let (temporary_path, mut cleanup) = self.write_temporary(&bytes, snapshot)?;
-        self.commit_hook
-            .check(CommitStage::Replace)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::Settings,
-                    StorageIoOperation::Replace,
-                    error,
-                )
-            })?;
-        fs::rename(&temporary_path, &destination).map_err(|error| {
-            io_error(
-                StorageFileKind::Settings,
-                StorageIoOperation::Replace,
-                error,
-            )
-        })?;
-        cleanup.disarm();
-
-        if self
-            .commit_hook
-            .check(CommitStage::SyncDirectory)
-            .and_then(|()| sync_directory(&self.root))
-            .is_err()
-        {
-            self.reload_required = true;
-            return Err(StorageError::IndeterminateCommit);
-        }
-        Ok(())
+        self.commit_document(SETTINGS_DOCUMENT, &bytes, |path| {
+            match read_and_decode(path)? {
+                DecodedSettings::Current(candidate) if candidate == *snapshot => Ok(()),
+                _ => Err(document_error(StorageProblem::InvalidEnvelope)),
+            }
+        })
     }
 
     fn commit_identity_snapshot(
@@ -754,203 +806,76 @@ impl SettingsStore {
         snapshot: &IdentitySnapshot,
     ) -> Result<(), StorageError> {
         let bytes = encode_identity_snapshot(snapshot)?;
-        let destination = self.root.join(IDENTITY_FILE_NAME);
+        self.commit_document(IDENTITY_DOCUMENT, &bytes, |path| {
+            if read_and_decode_identity(path)? == *snapshot {
+                Ok(())
+            } else {
+                Err(document_error(StorageProblem::InvalidEnvelope))
+            }
+        })
+    }
+
+    fn commit_document(
+        &mut self,
+        document: StoreDocument,
+        bytes: &[u8],
+        validate: impl FnOnce(&Path) -> Result<(), StorageError>,
+    ) -> Result<(), StorageError> {
+        let destination = self.root.join(document.name);
         if entry_exists_no_follow(
             &destination,
-            StorageFileKind::Identity,
+            document.kind,
             StorageIoOperation::InspectEntry,
         )? {
-            validate_regular_file(&destination, StorageFileKind::Identity)?;
+            validate_regular_file(&destination, document.kind)?;
         }
 
-        let (temporary_path, mut cleanup) = self.write_identity_temporary(&bytes, snapshot)?;
+        let temporary_io = |operation, error| io_error(document.temporary_kind, operation, error);
+        self.commit_hook
+            .check(CommitStage::CreateTemporary)
+            .map_err(|error| temporary_io(StorageIoOperation::CreateTemporary, error))?;
+        let (staged_file, path) = create_temporary(
+            &self.root,
+            document.temporary_prefix,
+            document.temporary_kind,
+        )?;
+        let mut cleanup = TemporaryCleanup::new(path.clone());
+
+        {
+            // Close the file before cleanup on every failure. Windows denies
+            // deletion while this handle is open.
+            let mut temporary = staged_file;
+            self.commit_hook
+                .check(CommitStage::WriteTemporary)
+                .and_then(|()| temporary.write_all(bytes))
+                .and_then(|()| temporary.flush())
+                .map_err(|error| temporary_io(StorageIoOperation::WriteTemporary, error))?;
+            self.commit_hook
+                .check(CommitStage::SyncTemporary)
+                .and_then(|()| temporary.sync_all())
+                .map_err(|error| temporary_io(StorageIoOperation::SyncTemporary, error))?;
+        }
+
+        self.commit_hook
+            .check(CommitStage::ValidateTemporary)
+            .map_err(|error| temporary_io(StorageIoOperation::ValidateTemporary, error))?;
+        validate(&path)?;
         self.commit_hook
             .check(CommitStage::Replace)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::Identity,
-                    StorageIoOperation::Replace,
-                    error,
-                )
-            })?;
-        fs::rename(&temporary_path, &destination).map_err(|error| {
-            io_error(
-                StorageFileKind::Identity,
-                StorageIoOperation::Replace,
-                error,
-            )
-        })?;
+            .and_then(|()| move_storage_file(&path, &destination, true))
+            .map_err(|error| io_error(document.kind, StorageIoOperation::Replace, error))?;
         cleanup.disarm();
 
         if self
             .commit_hook
             .check(CommitStage::SyncDirectory)
-            .and_then(|()| sync_directory(&self.root))
+            .and_then(|()| finish_directory_commit(&self.root))
             .is_err()
         {
             self.reload_required = true;
             return Err(StorageError::IndeterminateCommit);
         }
         Ok(())
-    }
-
-    fn write_temporary(
-        &self,
-        bytes: &[u8],
-        snapshot: &SettingsSnapshot,
-    ) -> Result<(PathBuf, TemporaryCleanup), StorageError> {
-        self.commit_hook
-            .check(CommitStage::CreateTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporarySettings,
-                    StorageIoOperation::CreateTemporary,
-                    error,
-                )
-            })?;
-        let (mut temporary, temporary_path) = create_temporary(
-            &self.root,
-            SETTINGS_TEMP_PREFIX,
-            StorageFileKind::TemporarySettings,
-        )?;
-        let cleanup = TemporaryCleanup::new(temporary_path.clone());
-
-        self.commit_hook
-            .check(CommitStage::WriteTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporarySettings,
-                    StorageIoOperation::WriteTemporary,
-                    error,
-                )
-            })?;
-        temporary.write_all(bytes).map_err(|error| {
-            io_error(
-                StorageFileKind::TemporarySettings,
-                StorageIoOperation::WriteTemporary,
-                error,
-            )
-        })?;
-        temporary.flush().map_err(|error| {
-            io_error(
-                StorageFileKind::TemporarySettings,
-                StorageIoOperation::WriteTemporary,
-                error,
-            )
-        })?;
-
-        self.commit_hook
-            .check(CommitStage::SyncTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporarySettings,
-                    StorageIoOperation::SyncTemporary,
-                    error,
-                )
-            })?;
-        temporary.sync_all().map_err(|error| {
-            io_error(
-                StorageFileKind::TemporarySettings,
-                StorageIoOperation::SyncTemporary,
-                error,
-            )
-        })?;
-        drop(temporary);
-
-        self.commit_hook
-            .check(CommitStage::ValidateTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporarySettings,
-                    StorageIoOperation::ValidateTemporary,
-                    error,
-                )
-            })?;
-        let decoded = read_and_decode(&temporary_path)?;
-        match decoded {
-            DecodedSettings::Current(candidate) if candidate == *snapshot => {}
-            _ => return Err(document_error(StorageProblem::InvalidEnvelope)),
-        }
-        Ok((temporary_path, cleanup))
-    }
-
-    fn write_identity_temporary(
-        &self,
-        bytes: &[u8],
-        snapshot: &IdentitySnapshot,
-    ) -> Result<(PathBuf, TemporaryCleanup), StorageError> {
-        self.commit_hook
-            .check(CommitStage::CreateTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporaryIdentity,
-                    StorageIoOperation::CreateTemporary,
-                    error,
-                )
-            })?;
-        let (mut temporary, temporary_path) = create_temporary(
-            &self.root,
-            IDENTITY_TEMP_PREFIX,
-            StorageFileKind::TemporaryIdentity,
-        )?;
-        let cleanup = TemporaryCleanup::new(temporary_path.clone());
-
-        self.commit_hook
-            .check(CommitStage::WriteTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporaryIdentity,
-                    StorageIoOperation::WriteTemporary,
-                    error,
-                )
-            })?;
-        temporary.write_all(bytes).map_err(|error| {
-            io_error(
-                StorageFileKind::TemporaryIdentity,
-                StorageIoOperation::WriteTemporary,
-                error,
-            )
-        })?;
-        temporary.flush().map_err(|error| {
-            io_error(
-                StorageFileKind::TemporaryIdentity,
-                StorageIoOperation::WriteTemporary,
-                error,
-            )
-        })?;
-
-        self.commit_hook
-            .check(CommitStage::SyncTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporaryIdentity,
-                    StorageIoOperation::SyncTemporary,
-                    error,
-                )
-            })?;
-        temporary.sync_all().map_err(|error| {
-            io_error(
-                StorageFileKind::TemporaryIdentity,
-                StorageIoOperation::SyncTemporary,
-                error,
-            )
-        })?;
-        drop(temporary);
-
-        self.commit_hook
-            .check(CommitStage::ValidateTemporary)
-            .map_err(|error| {
-                io_error(
-                    StorageFileKind::TemporaryIdentity,
-                    StorageIoOperation::ValidateTemporary,
-                    error,
-                )
-            })?;
-        let candidate = read_and_decode_identity(&temporary_path)?;
-        if candidate != *snapshot {
-            return Err(document_error(StorageProblem::InvalidEnvelope));
-        }
-        Ok((temporary_path, cleanup))
     }
 
     #[cfg(test)]
@@ -1196,6 +1121,7 @@ fn io_error(
     }
 }
 
+#[cfg(not(windows))]
 fn prepare_root(root: &Path) -> Result<(), StorageError> {
     if !root.is_absolute() {
         return Err(document_error(StorageProblem::UnsafeEntryKind));
@@ -1241,26 +1167,10 @@ fn prepare_root(root: &Path) -> Result<(), StorageError> {
 
 fn acquire_process_lock(root: &Path) -> Result<File, StorageError> {
     let path = root.join(LOCK_FILE_NAME);
-    if entry_exists_no_follow(
-        &path,
-        StorageFileKind::ProcessLock,
-        StorageIoOperation::InspectEntry,
-    )? {
-        validate_regular_file(&path, StorageFileKind::ProcessLock)?;
-    }
-    let mut options = OpenOptions::new();
-    options.read(true).write(true).create(true);
-    configure_private_file_creation(&mut options);
-    let file = options.open(&path).map_err(|error| {
-        io_error(
-            StorageFileKind::ProcessLock,
-            StorageIoOperation::OpenLock,
-            error,
-        )
-    })?;
-    validate_opened_file(&path, &file, StorageFileKind::ProcessLock)?;
-    tighten_open_file_permissions(&file, StorageFileKind::ProcessLock)?;
-    validate_opened_file(&path, &file, StorageFileKind::ProcessLock)?;
+    #[cfg(windows)]
+    let file = windows_storage::open_lock(&path)?;
+    #[cfg(not(windows))]
+    let file = open_lock_file(&path)?;
     match file.try_lock() {
         Ok(()) => Ok(file),
         Err(TryLockError::WouldBlock) => Err(StorageError::LockHeld),
@@ -1277,7 +1187,8 @@ fn read_bounded(
     kind: StorageFileKind,
     encoded_limit: usize,
 ) -> Result<Vec<u8>, StorageError> {
-    let file = File::open(path).map_err(|error| io_error(kind, StorageIoOperation::Read, error))?;
+    let file =
+        open_read_file(path).map_err(|error| io_error(kind, StorageIoOperation::Read, error))?;
     validate_opened_file(path, &file, kind)?;
     tighten_open_file_permissions(&file, kind)?;
     validate_opened_file(path, &file, kind)?;
@@ -1305,14 +1216,14 @@ fn create_temporary(
 ) -> Result<(File, PathBuf), StorageError> {
     for _ in 0..MAX_TEMP_ATTEMPTS {
         let path = root.join(temporary_name(prefix));
-        let mut options = OpenOptions::new();
-        options.read(true).write(true).create_new(true);
-        configure_private_file_creation(&mut options);
-        match options.open(&path) {
-            Ok(file) => {
+        match create_private_file(&path) {
+            Ok(created) => {
+                let mut cleanup = TemporaryCleanup::new(path.clone());
+                let file = created;
                 validate_opened_file(&path, &file, kind)?;
                 tighten_open_file_permissions(&file, kind)?;
                 validate_opened_file(&path, &file, kind)?;
+                cleanup.disarm();
                 return Ok((file, path));
             }
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
@@ -1386,15 +1297,14 @@ fn is_exact_temporary_name(name: &str, prefix: &str) -> bool {
     matches!((parts.next(), parts.next(), parts.next()), (Some(first), Some(second), None) if valid_hex(first) && valid_hex(second))
 }
 
-fn quarantine_settings(root: &Path) -> Result<(), StorageError> {
-    let source = root.join(SETTINGS_FILE_NAME);
-    validate_regular_file(&source, StorageFileKind::Settings)?;
+fn quarantine_document(root: &Path, document: StoreDocument) -> Result<(), StorageError> {
+    let source = root.join(document.name);
+    validate_regular_file(&source, document.kind)?;
     let quarantine = root.join(QUARANTINE_DIRECTORY_NAME);
     for _ in 0..MAX_TEMP_ATTEMPTS {
-        let target = quarantine.join(format!(
-            "corrupt-{}.json",
-            &temporary_name(SETTINGS_TEMP_PREFIX)[SETTINGS_TEMP_PREFIX.len()..]
-        ));
+        let generated = temporary_name(document.temporary_prefix);
+        let suffix = &generated[document.temporary_prefix.len()..];
+        let target = quarantine.join(format!("{}{suffix}.json", document.quarantine_prefix));
         if entry_exists_no_follow(
             &target,
             StorageFileKind::Quarantine,
@@ -1402,9 +1312,9 @@ fn quarantine_settings(root: &Path) -> Result<(), StorageError> {
         )? {
             continue;
         }
-        match fs::rename(&source, &target) {
+        match move_storage_file(&source, &target, false) {
             Ok(()) => {
-                let quarantined = File::open(&target).map_err(|error| {
+                let quarantined = open_read_file(&target).map_err(|error| {
                     io_error(
                         StorageFileKind::Quarantine,
                         StorageIoOperation::TightenPermissions,
@@ -1414,14 +1324,14 @@ fn quarantine_settings(root: &Path) -> Result<(), StorageError> {
                 validate_opened_file(&target, &quarantined, StorageFileKind::Quarantine)?;
                 tighten_open_file_permissions(&quarantined, StorageFileKind::Quarantine)?;
                 validate_opened_file(&target, &quarantined, StorageFileKind::Quarantine)?;
-                sync_directory(&quarantine).map_err(|error| {
+                finish_directory_commit(&quarantine).map_err(|error| {
                     io_error(
                         StorageFileKind::Quarantine,
                         StorageIoOperation::SyncDirectory,
                         error,
                     )
                 })?;
-                sync_directory(root).map_err(|error| {
+                finish_directory_commit(root).map_err(|error| {
                     io_error(
                         StorageFileKind::Root,
                         StorageIoOperation::SyncDirectory,
@@ -1433,67 +1343,7 @@ fn quarantine_settings(root: &Path) -> Result<(), StorageError> {
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
             Err(error) => {
                 return Err(io_error(
-                    StorageFileKind::Settings,
-                    StorageIoOperation::Quarantine,
-                    error,
-                ));
-            }
-        }
-    }
-    Err(StorageError::Io {
-        file: StorageFileKind::Quarantine,
-        operation: StorageIoOperation::Quarantine,
-        kind: io::ErrorKind::AlreadyExists,
-    })
-}
-
-fn quarantine_identity(root: &Path) -> Result<(), StorageError> {
-    let source = root.join(IDENTITY_FILE_NAME);
-    validate_regular_file(&source, StorageFileKind::Identity)?;
-    let quarantine = root.join(QUARANTINE_DIRECTORY_NAME);
-    for _ in 0..MAX_TEMP_ATTEMPTS {
-        let generated = temporary_name(IDENTITY_TEMP_PREFIX);
-        let suffix = &generated[IDENTITY_TEMP_PREFIX.len()..];
-        let target = quarantine.join(format!("{IDENTITY_QUARANTINE_PREFIX}{suffix}.json"));
-        if entry_exists_no_follow(
-            &target,
-            StorageFileKind::Quarantine,
-            StorageIoOperation::Quarantine,
-        )? {
-            continue;
-        }
-        match fs::rename(&source, &target) {
-            Ok(()) => {
-                let quarantined = File::open(&target).map_err(|error| {
-                    io_error(
-                        StorageFileKind::Quarantine,
-                        StorageIoOperation::TightenPermissions,
-                        error,
-                    )
-                })?;
-                validate_opened_file(&target, &quarantined, StorageFileKind::Quarantine)?;
-                tighten_open_file_permissions(&quarantined, StorageFileKind::Quarantine)?;
-                validate_opened_file(&target, &quarantined, StorageFileKind::Quarantine)?;
-                sync_directory(&quarantine).map_err(|error| {
-                    io_error(
-                        StorageFileKind::Quarantine,
-                        StorageIoOperation::SyncDirectory,
-                        error,
-                    )
-                })?;
-                sync_directory(root).map_err(|error| {
-                    io_error(
-                        StorageFileKind::Root,
-                        StorageIoOperation::SyncDirectory,
-                        error,
-                    )
-                })?;
-                return Ok(());
-            }
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(error) => {
-                return Err(io_error(
-                    StorageFileKind::Identity,
+                    document.kind,
                     StorageIoOperation::Quarantine,
                     error,
                 ));
@@ -1508,6 +1358,11 @@ fn quarantine_identity(root: &Path) -> Result<(), StorageError> {
 }
 
 fn has_identity_recovery_evidence(root: &Path) -> Result<bool, StorageError> {
+    has_quarantine_evidence(root, IDENTITY_DOCUMENT.quarantine_prefix)
+}
+
+fn has_quarantine_evidence(root: &Path, prefix: &str) -> Result<bool, StorageError> {
+    const MAX_ENTRIES: usize = 4_096;
     let quarantine = root.join(QUARANTINE_DIRECTORY_NAME);
     let entries = fs::read_dir(quarantine).map_err(|error| {
         io_error(
@@ -1516,7 +1371,14 @@ fn has_identity_recovery_evidence(root: &Path) -> Result<bool, StorageError> {
             error,
         )
     })?;
-    for entry in entries {
+    for (index, entry) in entries.enumerate() {
+        if index >= MAX_ENTRIES {
+            return Err(io_error(
+                StorageFileKind::Quarantine,
+                StorageIoOperation::InspectEntry,
+                io::Error::from(io::ErrorKind::FileTooLarge),
+            ));
+        }
         let entry = entry.map_err(|error| {
             io_error(
                 StorageFileKind::Quarantine,
@@ -1528,7 +1390,7 @@ fn has_identity_recovery_evidence(root: &Path) -> Result<bool, StorageError> {
         let Some(name) = name.to_str() else {
             continue;
         };
-        if is_identity_quarantine_name(name) {
+        if is_quarantine_name(name, prefix) {
             validate_regular_file(&entry.path(), StorageFileKind::Quarantine)?;
             return Ok(true);
         }
@@ -1536,9 +1398,9 @@ fn has_identity_recovery_evidence(root: &Path) -> Result<bool, StorageError> {
     Ok(false)
 }
 
-fn is_identity_quarantine_name(name: &str) -> bool {
+fn is_quarantine_name(name: &str, prefix: &str) -> bool {
     let Some(suffix) = name
-        .strip_prefix(IDENTITY_QUARANTINE_PREFIX)
+        .strip_prefix(prefix)
         .and_then(|value| value.strip_suffix(".json"))
     else {
         return false;
@@ -1584,6 +1446,7 @@ fn entry_exists_no_follow(
     }
 }
 
+#[cfg(not(windows))]
 fn validate_regular_file(path: &Path, kind: StorageFileKind) -> Result<(), StorageError> {
     let metadata = fs::symlink_metadata(path)
         .map_err(|error| io_error(kind, StorageIoOperation::InspectEntry, error))?;
@@ -1593,6 +1456,7 @@ fn validate_regular_file(path: &Path, kind: StorageFileKind) -> Result<(), Stora
     validate_link_count(&metadata)
 }
 
+#[cfg(not(windows))]
 fn validate_opened_file(
     path: &Path,
     file: &File,
@@ -1619,7 +1483,7 @@ fn same_file(left: &fs::Metadata, right: &fs::Metadata) -> bool {
     left.dev() == right.dev() && left.ino() == right.ino()
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn same_file(_left: &fs::Metadata, _right: &fs::Metadata) -> bool {
     true
 }
@@ -1634,9 +1498,9 @@ fn validate_link_count(metadata: &fs::Metadata) -> Result<(), StorageError> {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn validate_link_count(_metadata: &fs::Metadata) -> Result<(), StorageError> {
-    Ok(())
+    Err(StorageError::PlatformPermissionEnforcementUnavailable)
 }
 
 #[cfg(unix)]
@@ -1649,7 +1513,7 @@ fn create_private_directory(path: &Path, kind: StorageFileKind) -> Result<(), St
         .map_err(|error| io_error(kind, StorageIoOperation::CreateDirectory, error))
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn create_private_directory(path: &Path, kind: StorageFileKind) -> Result<(), StorageError> {
     fs::create_dir(path).map_err(|error| io_error(kind, StorageIoOperation::CreateDirectory, error))
 }
@@ -1660,7 +1524,7 @@ fn configure_private_file_creation(options: &mut OpenOptions) {
     options.mode(0o600);
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn configure_private_file_creation(_options: &mut OpenOptions) {}
 
 #[cfg(unix)]
@@ -1670,7 +1534,7 @@ fn tighten_directory_permissions(path: &Path, kind: StorageFileKind) -> Result<(
         .map_err(|error| io_error(kind, StorageIoOperation::TightenPermissions, error))
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn tighten_directory_permissions(_path: &Path, _kind: StorageFileKind) -> Result<(), StorageError> {
     Err(StorageError::PlatformPermissionEnforcementUnavailable)
 }
@@ -1682,19 +1546,67 @@ fn tighten_open_file_permissions(file: &File, kind: StorageFileKind) -> Result<(
         .map_err(|error| io_error(kind, StorageIoOperation::TightenPermissions, error))
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 fn tighten_open_file_permissions(_file: &File, _kind: StorageFileKind) -> Result<(), StorageError> {
     Err(StorageError::PlatformPermissionEnforcementUnavailable)
 }
 
 #[cfg(unix)]
-fn sync_directory(path: &Path) -> io::Result<()> {
+fn finish_directory_commit(path: &Path) -> io::Result<()> {
     File::open(path)?.sync_all()
 }
 
-#[cfg(not(unix))]
-fn sync_directory(_path: &Path) -> io::Result<()> {
-    Ok(())
+#[cfg(not(any(unix, windows)))]
+fn finish_directory_commit(_path: &Path) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
+}
+
+#[cfg(not(windows))]
+fn open_lock_file(path: &Path) -> Result<File, StorageError> {
+    let kind = StorageFileKind::ProcessLock;
+    if entry_exists_no_follow(path, kind, StorageIoOperation::InspectEntry)? {
+        validate_regular_file(path, kind)?;
+    }
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create(true);
+    configure_private_file_creation(&mut options);
+    let file = options
+        .open(path)
+        .map_err(|error| io_error(kind, StorageIoOperation::OpenLock, error))?;
+    validate_opened_file(path, &file, kind)?;
+    tighten_open_file_permissions(&file, kind)?;
+    validate_opened_file(path, &file, kind)?;
+    Ok(file)
+}
+
+#[cfg(not(windows))]
+fn create_private_file(path: &Path) -> io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true).create_new(true);
+    configure_private_file_creation(&mut options);
+    options.open(path)
+}
+
+#[cfg(not(windows))]
+fn open_read_file(path: &Path) -> io::Result<File> {
+    File::open(path)
+}
+
+#[cfg(not(windows))]
+fn move_storage_file(from: &Path, to: &Path, _replace: bool) -> io::Result<()> {
+    fs::rename(from, to)
+}
+
+#[cfg(windows)]
+use windows_storage::{
+    confirm_directory as finish_directory_commit, create_temporary as create_private_file,
+    move_file as move_storage_file, open_read as open_read_file,
+    validate_file as validate_regular_file, validate_opened as validate_opened_file,
+};
+
+#[cfg(windows)]
+fn tighten_open_file_permissions(file: &File, _kind: StorageFileKind) -> Result<(), StorageError> {
+    windows_storage::verify_file_security(file)
 }
 
 #[cfg(test)]
@@ -1733,6 +1645,19 @@ mod tests {
 
     fn open_seeded(root: &Path, seed: u64) -> Result<(SettingsStore, LoadStatus), StorageError> {
         SettingsStore::open_with_entropy(root, Arc::new(SeededEntropy::new(seed)))
+    }
+
+    pub(super) fn write_fixture(
+        path: impl AsRef<Path>,
+        contents: impl AsRef<[u8]>,
+    ) -> io::Result<()> {
+        #[cfg(windows)]
+        match create_private_file(path.as_ref()) {
+            Ok(mut file) => return file.write_all(contents.as_ref()),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+        fs::write(path, contents)
     }
 
     fn changed_settings() -> DesktopSettings {
@@ -1799,7 +1724,7 @@ mod tests {
         let root = temporary.path().join("config");
         let (store, _) = open_seeded(&root, 1).expect("first open");
         drop(store);
-        fs::write(root.join(IDENTITY_FILE_NAME), b"{not-json").expect("corrupt identity");
+        write_fixture(root.join(IDENTITY_FILE_NAME), b"{not-json").expect("corrupt identity");
 
         let (store, status) = open_seeded(&root, 2).expect("quarantine corruption");
         assert_eq!(status, LoadStatus::Loaded);
@@ -1818,7 +1743,7 @@ mod tests {
             IdentityLoadStatus::ResetRequired
         );
         assert!(store.identity_snapshot().is_none());
-        fs::write(root.join(PAIRED_DEVICES_FILE_NAME), b"placeholder").expect("paired state");
+        write_fixture(root.join(PAIRED_DEVICES_FILE_NAME), b"placeholder").expect("paired state");
         assert_eq!(
             store.confirm_identity_reset(),
             Err(StorageError::IdentityResetBlockedByPairedDevices)
@@ -1845,7 +1770,7 @@ mod tests {
             let root = temporary.path().join("config");
             let (store, _) = open_seeded(&root, 5).expect("first open");
             drop(store);
-            fs::write(root.join(IDENTITY_FILE_NAME), contents).expect("invalid fixture");
+            write_fixture(root.join(IDENTITY_FILE_NAME), contents).expect("invalid fixture");
             let (store, _) = open_seeded(&root, 6).expect("fail-closed open");
             assert_eq!(
                 store.identity_load_status(),
@@ -1862,7 +1787,7 @@ mod tests {
         let (store, _) = open_seeded(&root, 7).expect("first open");
         drop(store);
         let future = br#"{"format":"tether.identity","schema_version":99,"revision":1,"payload":{"future":true}}"#;
-        fs::write(root.join(IDENTITY_FILE_NAME), future).expect("future fixture");
+        write_fixture(root.join(IDENTITY_FILE_NAME), future).expect("future fixture");
         assert!(matches!(
             open_seeded(&root, 8),
             Err(StorageError::UnsupportedIdentitySchema {
@@ -1895,7 +1820,7 @@ mod tests {
             })
         );
 
-        fs::write(root.join(PAIRED_DEVICES_FILE_NAME), b"placeholder").expect("paired state");
+        write_fixture(root.join(PAIRED_DEVICES_FILE_NAME), b"placeholder").expect("paired state");
         assert_eq!(
             store.rotate_identity(rotated.revision()),
             Err(StorageError::IdentityResetBlockedByPairedDevices)
@@ -1968,7 +1893,7 @@ mod tests {
         let root = temporary.path().join("config");
         let (store, _) = SettingsStore::open(&root).expect("create root");
         drop(store);
-        fs::write(
+        write_fixture(
             root.join(SETTINGS_FILE_NAME),
             br#"{"format":"tether.settings","schema_version":1,"revision":7,"payload":{"server_port":48312,"approved_interface_ids":["stable-id"],"auto_listen":true}}"#,
         )
@@ -1992,7 +1917,7 @@ mod tests {
         let root = temporary.path().join("config");
         let (store, _) = SettingsStore::open(&root).expect("create root");
         drop(store);
-        fs::write(root.join(SETTINGS_FILE_NAME), b"{not-json").expect("corrupt fixture");
+        write_fixture(root.join(SETTINGS_FILE_NAME), b"{not-json").expect("corrupt fixture");
 
         let (mut store, status) = SettingsStore::open(&root).expect("quarantine");
         assert_eq!(status, LoadStatus::RecoveryRequired);
@@ -2021,7 +1946,7 @@ mod tests {
             let root = temporary.path().join("config");
             let (store, _) = SettingsStore::open(&root).expect("create root");
             drop(store);
-            fs::write(root.join(SETTINGS_FILE_NAME), contents).expect("fixture");
+            write_fixture(root.join(SETTINGS_FILE_NAME), contents).expect("fixture");
             let (store, status) = SettingsStore::open(&root).expect("recover corruption");
             assert_eq!(status, LoadStatus::RecoveryRequired);
             assert!(store.snapshot().is_none());
@@ -2045,7 +1970,7 @@ mod tests {
             let root = temporary.path().join("config");
             let (store, _) = SettingsStore::open(&root).expect("create root");
             drop(store);
-            fs::write(root.join(SETTINGS_FILE_NAME), contents).expect("fixture");
+            write_fixture(root.join(SETTINGS_FILE_NAME), contents).expect("fixture");
             let (store, status) = SettingsStore::open(&root).expect("recover corruption");
             assert_eq!(status, LoadStatus::RecoveryRequired);
             assert!(store.snapshot().is_none());
@@ -2059,7 +1984,7 @@ mod tests {
         let (store, _) = SettingsStore::open(&root).expect("create root");
         drop(store);
         let future = br#"{"format":"tether.settings","schema_version":99,"revision":1,"payload":{"future":true}}"#;
-        fs::write(root.join(SETTINGS_FILE_NAME), future).expect("future fixture");
+        write_fixture(root.join(SETTINGS_FILE_NAME), future).expect("future fixture");
         assert!(matches!(
             SettingsStore::open(&root),
             Err(StorageError::UnsupportedSchema {
@@ -2096,10 +2021,10 @@ mod tests {
         let abandoned_identity = root.join(".identity.tmp-fedcba9876543210-fedcba9876543210");
         let similar = root.join(".settings.tmp-not-owned");
         let similar_identity = root.join(".identity.tmp-not-owned");
-        fs::write(&abandoned, b"partial").expect("abandoned");
-        fs::write(&abandoned_identity, b"partial").expect("abandoned identity");
-        fs::write(&similar, b"leave alone").expect("similar");
-        fs::write(&similar_identity, b"leave alone").expect("similar identity");
+        write_fixture(&abandoned, b"partial").expect("abandoned");
+        write_fixture(&abandoned_identity, b"partial").expect("abandoned identity");
+        write_fixture(&similar, b"leave alone").expect("similar");
+        write_fixture(&similar_identity, b"leave alone").expect("similar identity");
         let (_store, _) = SettingsStore::open(&root).expect("cleanup");
         assert!(!abandoned.exists());
         assert!(!abandoned_identity.exists());

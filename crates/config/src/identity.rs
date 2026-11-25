@@ -142,7 +142,7 @@ impl fmt::Display for LocalHostname {
     }
 }
 
-fn encode_lower_hex(bytes: &[u8]) -> String {
+pub(crate) fn encode_lower_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut encoded = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
@@ -152,7 +152,7 @@ fn encode_lower_hex(bytes: &[u8]) -> String {
     encoded
 }
 
-fn decode_lower_hex<const N: usize>(encoded: &str) -> Option<[u8; N]> {
+pub(crate) fn decode_lower_hex<const N: usize>(encoded: &str) -> Option<[u8; N]> {
     if encoded.len() != N * 2 {
         return None;
     }

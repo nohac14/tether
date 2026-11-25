@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tether</title>
+    <link rel="stylesheet" href="shell.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Tether</h1>
+        <p id="status" role="status">Starting</p>
+      </header>
+      <section id="setup" hidden>
+        <h2>Connect your phone</h2>
+        <p>Use a private network you trust. Connect your phone and PC to that network.</p>
+        <label for="network">PC network</label>
+        <select id="network"></select>
+        <label for="port">Connection port</label>
+        <select id="port"></select>
+        <div class="actions">
+          <button id="start" type="button">Start on this network</button>
+          <button id="refresh" type="button" class="secondary">Refresh</button>
+        </div>
+      </section>
+      <section id="pair" hidden>
+        <div class="session-heading">
+          <h2>Pair a phone</h2>
+          <button id="stop" type="button" class="secondary">Stop control</button>
+        </div>
+        <p>Scan this code with your phone, then approve the request here.</p>
+        <div class="qr">
+          <canvas id="qr" role="img" aria-label="Phone pairing QR code" hidden></canvas>
+        </div>
+        <p id="pair-state"></p>
+        <button type="button" id="offer" class="secondary">New QR code</button>
+      </section>
+      <section id="approvals" aria-label="Pairing requests" hidden>
+        <h2>Pairing requests</h2>
+        <ul id="devices"></ul>
+      </section>
+      <div id="paired" class="actions" hidden>
+        <span id="paired-count"></span>
+        <button type="button" class="secondary" id="forget">Forget paired phones</button>
+      </div>
+      <p id="notice" role="alert" hidden></p>
+      <section aria-label="Windows startup">
+        <label
+          ><input id="startup" type="checkbox" disabled /> Start Tether in the tray when I sign
+          in</label
+        >
+        <p>Closing this window keeps Tether running. Right-click its taskbar tray icon to quit.</p>
+        <p id="startup-notice" role="status" hidden></p>
+      </section>
+    </main>
+    <script type="module" src="shell.mjs"></script>
+  </body>
+</html>

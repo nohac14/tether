@@ -35,6 +35,14 @@ virtual keys, and UTF-16 Unicode records. Supplementary Unicode scalars are
 tested as ordered surrogate-unit down/up pairs. The binding surface
 cross-compiles for `x86_64-pc-windows-msvc`.
 
+Relative movement uses the shared fixed-point translator at one normalized
+unit per native pixel before Windows applies user pointer settings. Each wheel
+axis independently maps one normalized unit to 120 Win32 wheel units. Positive
+wheel deltas go up vertically and right horizontally. The mapper preserves
+signed fractional remainders, produces no record for zero native movement, and
+clears all remainders through the inert release hook. These scales are the
+initial conversion and still require application and hardware tuning.
+
 The mapper is intentionally partial: reviewed HID usages map, while other
 allowlisted usages return `Unsupported` without concealing keyboard capability.
 No call to `SendInput` occurs. Consequently this spike does not validate UIPI,
@@ -43,6 +51,17 @@ behavior, elevation boundaries, DPI, multiple monitors, or Windows release
 support. Microsoft documents both the serial insertion semantics and UIPI
 restriction of `SendInput` in the
 [official API reference](https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-sendinput).
+The native host inventory and current linked-test scope are recorded in the
+[Windows checkpoint](../manual-tests/2026-11-19-windows-foundation.md).
+
+The Windows mapper now lowers plans to the generated Win32 `INPUT` structs.
+Windows tests inspect relative coordinates, signed wheel data, the extra-button
+codes, scan flags and UTF-16 events without submitting them to the OS.
+`guarded_motion` is a separate opt-in diagnostic for an isolated Windows
+session. Its native path submits one relative pointer movement and verifies the
+insertion count. Only the refusal path ran on this workstation. [INPUT](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-input)
+[KEYBDINPUT](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-keybdinput)
+[MOUSEINPUT](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput)
 
 ## macOS Core Graphics spike
 
@@ -108,7 +127,7 @@ until independent review and named GNOME/KDE evidence are available.
 
 | Backend | Mapper/inert tests | Binding compile | Native probe | Live injection | Physical target validation |
 | --- | --- | --- | --- | --- | --- |
-| Windows | Passed on macOS host | Passed, Windows x86_64 cross-target | Not run | Not run | Not run |
+| Windows | Eight tests passed on Windows 11 x64 with Rust MSVC and GNU | Passed natively with MSVC and GNU | `SendInput` export resolved | Not run | Not run |
 | macOS | Passed on macOS arm64 | Passed natively | Accessibility preflight only | Not run | Not run |
 | X11 | Passed on macOS host | Passed, Linux x86_64 cross-target | Not run | Not run | Not run |
 | Wayland | Passed on macOS host | Passed, Linux x86_64 cross-target | Simulated negotiation only | Not run | Not run |

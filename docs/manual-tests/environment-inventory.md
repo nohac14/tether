@@ -9,6 +9,10 @@ This inventory records what is actually available to the current workspace and
 what remains a release dependency. Availability is not a support claim and does
 not count as a passed manual test.
 
+The [November 19 Windows checkpoint](2026-11-19-windows-foundation.md) records
+direct observations of Windows 11 Pro 25H2 x64, toolchain setup and the
+read-only `SendInput` export check.
+
 ## Locally observed environment
 
 | Item | Observed value | Evidence status |
@@ -44,7 +48,7 @@ or signing-identity name was collected for this inventory.
 
 | Intended claim or risk | Environment required | Current availability | Gate |
 | --- | --- | --- | --- |
-| Windows 11 Tier 1 | Clean Windows 11 x86-64 machine/VM with real interactive desktop, supported WebView2, installer privileges, normal and elevated target applications, mixed-DPI displays where possible | Windows 11 AMD PC reported available; setup, exact architecture/build, and all validation still pending | WIN-003, PK-001, RL-002 |
+| Windows 11 Tier 1 | Clean Windows 11 x86-64 machine/VM with real interactive desktop, supported WebView2, installer privileges, normal and elevated target applications, mixed-DPI displays where possible | Windows 11 Pro 25H2 x64 build 26200.9974 observed on the candidate PC. Clean install, interactive input tests and packaging remain pending. | WIN-003, PK-001, RL-002 |
 | Serviced Windows 10 | Each exact LTSC/IoT/ESU edition intended for a support claim | Unavailable; no Windows 10 claim may be made | WIN-003, IT-006 |
 | macOS Apple Silicon | This arm64 host plus a stable Apple-issued signing identity and clean install/upgrade environment | Host available; signing and clean permission lifecycle unavailable | MAC-003, PK-002 |
 | Intel macOS | Maintained Intel Mac capable of running the claimed macOS release | Unavailable | MAC-003, IT-006 |

@@ -277,7 +277,8 @@ The `config` crate implements the settings and installation-identity portions of
 this contract. The current exact settings envelope is schema version 2; a
 schema-version-1 fixture migrates deterministically by defaulting
 `start_at_login` to false and log level to `info`, then commits revision `N + 1`
-before exposure. Paired-device documents remain owned by PA-003.
+before exposure. PA-003 uses the same lifetime lock and atomic document commit
+for paired devices.
 
 Implemented settings behavior includes:
 
@@ -319,11 +320,21 @@ Implemented identity behavior includes:
   paired-device entry remains; and
 - no identity or settings document committed when initial OS entropy fails.
 
-The settings and identity implementation fails closed on non-Unix platforms with
-`PlatformPermissionEnforcementUnavailable`; it does not silently treat inherited
-Windows ACLs as compliant. Explicit Windows DACL and reparse/hard-link inspection
-remain release-blocking work under R-018. Therefore the automated macOS result
-does not establish Windows storage support or native Linux behavior.
+On Windows, [ADR 0005](../adr/0005-windows-private-storage.md) puts native ACL
+and handle checks in one private module. New directories and files are created
+with protected ACLs granting the current user, SYSTEM and local Administrators
+access. Existing entries must have the expected ownership and ACL. Windows
+validates file type, reparse attributes, handle identity and a single link for
+regular files before reading. Root and quarantine handles deny rename until the
+store closes. The lock denies sharing and also takes the non-blocking OS lock.
+The module refuses reparse ancestors and volumes without persistent ACLs.
+
+Windows uses `MoveFileExW` with write-through requested. The shared flow still
+flushes and verifies the staged file before replacement. The post-replacement
+check verifies directory protection before publishing the revision. Unix
+continues to sync the parent directory. Real interruption and installed upgrade
+coverage remain open under R-018. See the
+[Windows storage checkpoint](../manual-tests/2026-11-19-pairing-and-assets.md#windows-storage).
 
 Twenty-eight automated tests cover first run/restart, settings and identity
 persistence/conflicts, deterministic identity derivation, entropy failure,
@@ -334,3 +345,38 @@ before every replacement phase, post-replacement sync ambiguity, redaction,
 descriptor-targeted permission changes, and Unix permission/symlink/hard-link
 behavior. The fault and entropy hooks affect tests only; the production API uses
 real filesystem and operating-system entropy operations.
+
+## PA-003 paired-device storage
+
+The strict `tether.paired-devices` version 2 envelope binds each snapshot to
+the installation ID and uses its own positive revision. It is capped at 1 MiB
+and 128 records. Each record contains a 128-bit opaque ID, a validated label,
+the exact browser host, the lowercase SHA-256 credential digest, issuance and
+expiration as Unix seconds, and optional last-seen time. An installation with
+no device file and no device quarantine evidence starts with an empty list.
+Version 1 files retain their existing deadlines and are read without rewriting.
+The next device mutation writes version 2.
+
+The store generates the credential with a separate 256-bit OS entropy draw.
+Successful enrollment returns a single-use receipt only after the atomic commit.
+Cookie delivery then revalidates the approval deadline, exact host, digest and
+current credential deadline against the store. Rename and last-seen updates
+check revisions. A verified connection can move the deadline to 30 days after
+the observed use. Writes occur at most once per minute per device. An expired
+credential cannot be renewed.
+
+Beginning revocation immediately closes store verification and yields the
+request the core uses to initiate cleanup. The gate stays closed until the
+matching revocation commits. Failures preserve the pending request across a
+locked reload in the running process. A failure before replacement can leave
+the old document on disk, so the caller may acknowledge revocation only after
+durable success. Malformed or installation-mismatched documents are quarantined
+and require explicit recovery. Unknown newer versions stay in place during
+ordinary recovery. A separately confirmed factory reset can securely remove
+the device document before identity rotation and keep the gate closed
+through empty-store recreation.
+
+Windows tests exercise the shared protected write path, fault injection,
+restart, and mock dispatcher release ordering. The production session
+coordinator and installed storage tests remain pending. See the
+[paired-device checkpoint](../manual-tests/2026-11-19-paired-device-store.md).

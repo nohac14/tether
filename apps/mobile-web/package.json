@@ -11,7 +11,7 @@
     "@bufbuild/protobuf": "2.17.0"
   },
   "scripts": {
-    "build": "node --experimental-strip-types src/main.ts",
+    "build": "node build.mjs",
     "typecheck": "tsc --project tsconfig.json"
   }
 }

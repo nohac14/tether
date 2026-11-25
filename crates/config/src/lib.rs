@@ -16,8 +16,10 @@ pub use settings::{
     MAX_INTERFACE_ID_BYTES, SettingsValidationError,
 };
 pub use store::{
-    CURRENT_IDENTITY_SCHEMA_VERSION, CURRENT_SETTINGS_SCHEMA_VERSION, IDENTITY_FILE_LIMIT,
-    IdentityLoadStatus, IdentityRevision, IdentitySnapshot, LoadStatus, SETTINGS_FILE_LIMIT,
+    CURRENT_IDENTITY_SCHEMA_VERSION, CURRENT_SETTINGS_SCHEMA_VERSION, DeviceCookie,
+    DeviceEnrollment, DeviceId, DeviceRevision, DeviceRevocation, DeviceStoreStatus,
+    DevicesSnapshot, IDENTITY_FILE_LIMIT, IdentityLoadStatus, IdentityRevision, IdentitySnapshot,
+    LoadStatus, MAX_DEVICES, PairedDevice, RevocationRequest, SETTINGS_FILE_LIMIT,
     SettingsRevision, SettingsSnapshot, SettingsStore, StorageError, StorageFileKind,
-    StorageIoOperation, StorageProblem,
+    StorageIoOperation, StorageProblem, VerifiedDevice,
 };
