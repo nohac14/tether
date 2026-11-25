@@ -117,6 +117,11 @@ function display(view) {
   status.textContent = view.controlling ? "Phone in control" : phaseLabels[view.phase];
   setup.hidden = view.phase !== "choose";
   pair.hidden = view.phase !== "listening";
+  const address = byId("reconnect-address");
+  address.hidden = !view.paired || !view.listeningAddress;
+  address.textContent = address.hidden
+    ? ""
+    : "Already paired? Reopen " + view.listeningAddress + " in the same phone browser.";
   byId("approvals").hidden = !view.pending.length;
   byId("paired").hidden = view.paired === 0;
   byId("paired-count").textContent =

@@ -65,12 +65,20 @@ if (root) {
     control.pause();
     if (!pairingBlocksControl) shell.showStatus("network-unavailable");
   };
-  const disposePairing = watchPairing((status) => {
-    pairingBlocksControl = status !== "paired";
-    if (pairingBlocksControl) control.pause();
-    shell.showStatus(status);
-    startControl();
-  });
+  const disposePairing = watchPairing(
+    (status) => {
+      if (status === "reconnected") {
+        pairingBlocksControl = false;
+        return;
+      }
+      pairingBlocksControl = status !== "paired";
+      if (pairingBlocksControl) control.pause();
+      shell.showStatus(status);
+      startControl();
+    },
+    window,
+    (signal) => control.tryExisting(signal),
+  );
   startControl();
   document.addEventListener("visibilitychange", visibility);
   window.addEventListener("pageshow", startControl);

@@ -298,6 +298,39 @@ describe("mobile control connection", () => {
     expect(f.surface).toBeUndefined();
   });
 
+  it("reuses authenticated control on a QR scan and cancels an unfinished check", async () => {
+    const f = setup();
+    const signal = new AbortController();
+    const first = f.session.tryExisting(signal.signal);
+    f.socket(0).open();
+    f.socket(0).greet(control(ControlStateKind.NO_CONTROLLER));
+    expect(await first).toBe(true);
+    expect(await f.session.tryExisting(signal.signal)).toBe(true);
+    expect(f.sockets).toHaveLength(1);
+    f.session.pause();
+    const second = f.session.tryExisting(signal.signal);
+    signal.abort();
+    expect(await second).toBe(false);
+    expect(f.socket(1).closed).toBe(true);
+    f.advance(30_000);
+    expect(f.sockets).toHaveLength(2);
+  });
+
+  it("keeps an authenticated tab retrying through a reboot", () => {
+    const f = setup();
+    f.session.start();
+    f.socket(0).open();
+    f.socket(0).greet(control(ControlStateKind.NO_CONTROLLER));
+    for (const wait of [250, 500, 1000, 2000, 4000, 8000, 15000, 15000]) {
+      f.sockets.at(-1)?.closeFromServer(1006);
+      f.advance(wait);
+    }
+    expect(f.sockets).toHaveLength(9);
+    f.socket(8).open();
+    f.socket(8).greet(control(ControlStateKind.CONTROLLING));
+    expect(f.status.at(-1)).toBe("controlling");
+  });
+
   it("bounds repeated failures and allows the user to restart attempts", () => {
     const f = setup();
     f.session.start();

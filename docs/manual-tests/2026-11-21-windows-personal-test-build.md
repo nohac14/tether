@@ -128,3 +128,14 @@ The published executable also served the mobile page over the selected
 private Ethernet port 55001 while its window was hidden. Unit tests exercised
 enable, query, repeated disable, and protection of a different executable's
 entry in a disposable Windows registry subtree.
+
+## Paired tab across Windows host restart
+
+The owner reported repeated enrollments on a second PC, with the prior device
+still listed after restart and the same Safari tab open. On Windows, a headless
+Edge tab paired with a loopback host using a mock input backend. The host
+exited and reopened its protected store in a fresh process on the same port
+after a 12-second outage. The tab regained control automatically. Reloading
+and reopening a previously scanned QR in a fresh document both reused the
+credential. The restarted host failed the test if any new approval appeared.
+A second-PC reboot with the revised build and physical Safari remains untested.

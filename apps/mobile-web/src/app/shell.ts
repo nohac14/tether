@@ -25,7 +25,8 @@ const statusText: Record<ConnectionStatus, string> = {
   "pairing-unavailable": "Scan a new pairing QR code",
   connecting: "Connecting",
   reconnecting: "Reconnecting",
-  "computer-unavailable": "Can’t connect to the PC. Scan a new pairing QR code if needed.",
+  "computer-unavailable":
+    "Open Tether on the PC, start it on the same address and port, then tap Retry.",
   "network-unavailable": "Network unavailable",
   "control-unavailable": "Connected · Input paused on the PC",
   standby: "Connected · Standby",

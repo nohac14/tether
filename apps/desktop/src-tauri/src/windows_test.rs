@@ -22,6 +22,7 @@ struct View {
     generation: String,
     pending: Vec<Phone>,
     qr: Option<Code>,
+    listening_address: Option<String>,
     paired: usize,
     connected: usize,
     controlling: bool,
@@ -118,6 +119,9 @@ impl From<Snapshot> for View {
                 })
                 .collect(),
             qr: state.offer.as_deref().and_then(code),
+            listening_address: state
+                .listening_address
+                .map(|address| format!("http://{address}/")),
             paired: state.paired,
             connected: state.connected,
             controlling: state.controlling,

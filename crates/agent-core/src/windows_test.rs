@@ -88,6 +88,7 @@ pub struct Snapshot {
     pub generation: u64,
     pub phones: Vec<PendingPhone>,
     pub offer: Option<String>,
+    pub listening_address: Option<SocketAddr>,
     pub paired: usize,
     pub connected: usize,
     pub controlling: bool,
@@ -104,6 +105,7 @@ impl Default for Snapshot {
             generation: 0,
             phones: Vec::new(),
             offer: None,
+            listening_address: None,
             paired: 0,
             connected: 0,
             controlling: false,
@@ -629,6 +631,7 @@ impl Reactor {
                 generation: self.active.map_or(0, NonZeroU64::get),
                 phones,
                 offer: self.offer.as_ref().map(|(offer, _)| offer.clone()),
+                listening_address: self.active.and(self.requested),
                 paired: self
                     .store
                     .devices_snapshot()

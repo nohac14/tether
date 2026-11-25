@@ -20,10 +20,14 @@ function setup(hash = `#pair=${QR}`) {
       clearTimeout(id);
     },
   } as unknown as NonNullable<Parameters<typeof beginPairing>[1]>;
-  const start = () =>
-    beginPairing((state) => {
-      states.push(state);
-    }, browser);
+  const start = (check?: (signal: AbortSignal) => Promise<boolean>) =>
+    beginPairing(
+      (state) => {
+        states.push(state);
+      },
+      browser,
+      check,
+    );
   const initial = (body = JSON.stringify({ completion: COMPLETION })) =>
     new Response(body, {
       status: 202,
@@ -104,6 +108,16 @@ describe("mobile pairing", () => {
       expect(f.fetch).toHaveBeenCalledTimes(1);
       expect(f.states).toEqual(["pairing", "pairing-unavailable"]);
     }
+  });
+
+  it("scrubs a rescanned QR and keeps the existing credential without enrolling", async () => {
+    const f = setup();
+    f.start(() => Promise.resolve(true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.sequence).toEqual(["scrub"]);
+    expect(f.fetch).not.toHaveBeenCalled();
+    expect(f.states).toEqual(["reconnected"]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("stops after denial or page cancellation without resubmitting the QR", async () => {

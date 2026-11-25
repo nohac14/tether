@@ -5,7 +5,8 @@ const POLL_MS = 2_000;
 const PAIR_MS = 120_000;
 const REQUEST_MS = 10_000;
 
-type PairingStatus = "pairing" | "paired" | "pairing-unavailable";
+type PairingStatus = "pairing" | "paired" | "pairing-unavailable" | "reconnected";
+type CheckExisting = (signal: AbortSignal) => Promise<boolean>;
 type PairingBrowser = Pick<
   Window,
   "location" | "history" | "fetch" | "setTimeout" | "clearTimeout"
@@ -15,6 +16,7 @@ type PairingBrowser = Pick<
 export function watchPairing(
   status: (state: PairingStatus) => void,
   browser: Window = window,
+  checkExisting?: CheckExisting,
 ): () => void {
   let revision = 0;
   let stop: (() => void) | undefined;
@@ -23,9 +25,13 @@ export function watchPairing(
     revision += 1;
     const current = revision;
     stop?.();
-    stop = beginPairing((value) => {
-      if (revision === current) status(value);
-    }, browser);
+    stop = beginPairing(
+      (value) => {
+        if (revision === current) status(value);
+      },
+      browser,
+      checkExisting,
+    );
   };
   const pause = () => {
     stop?.();
@@ -45,6 +51,7 @@ export function watchPairing(
 export function beginPairing(
   status: (state: PairingStatus) => void,
   browser: PairingBrowser = window,
+  checkExisting?: CheckExisting,
 ): (() => void) | undefined {
   const hash = browser.location.hash;
   if (!hash.startsWith(PREFIX)) return undefined;
@@ -68,11 +75,17 @@ export function beginPairing(
   const deadline = browser.setTimeout(() => {
     session.abort();
   }, PAIR_MS);
-  status("pairing");
-  void exchange(browser, session.signal, token)
-    .then((success) => {
-      status(success && !session.signal.aborted ? "paired" : "pairing-unavailable");
-    })
+  const connect = async () => {
+    if (checkExisting && (await checkExisting(session.signal))) {
+      if (!session.signal.aborted) status("reconnected");
+      return;
+    }
+    session.signal.throwIfAborted();
+    status("pairing");
+    const success = await exchange(browser, session.signal, token);
+    status(success && !session.signal.aborted ? "paired" : "pairing-unavailable");
+  };
+  void connect()
     .catch(() => {
       status("pairing-unavailable");
     })

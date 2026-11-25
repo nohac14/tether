@@ -91,6 +91,8 @@ export class MobileControlSession {
   private retry: number | undefined;
   private attempts = 0;
   private enabled = false;
+  private previouslyConnected = false;
+  private pairingCheck?: (connected: boolean) => void;
 
   constructor(
     private readonly url: string | undefined,
@@ -105,7 +107,27 @@ export class MobileControlSession {
     this.open();
   }
 
+  /** A scanned QR first tries the normal authenticated connection. */
+  tryExisting(signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted || !this.url || !this.environment.online()) return Promise.resolve(false);
+    if (this.current?.welcome) return Promise.resolve(true);
+    this.pause();
+    return new Promise((resolve) => {
+      const cancel = () => {
+        this.pause();
+      };
+      this.pairingCheck = (connected) => {
+        delete this.pairingCheck;
+        signal.removeEventListener("abort", cancel);
+        resolve(connected);
+      };
+      signal.addEventListener("abort", cancel, { once: true });
+      this.start();
+    });
+  }
+
   pause(reason?: ClientLeavingReason): void {
+    this.pairingCheck?.(false);
     this.enabled = false;
     if (this.retry !== undefined) this.environment.cancel(this.retry);
     this.retry = undefined;
@@ -261,6 +283,8 @@ export class MobileControlSession {
     if (connection.helloTimer !== undefined) this.environment.cancel(connection.helloTimer);
     delete connection.helloTimer;
     connection.welcome = welcome;
+    this.previouslyConnected = true;
+    this.pairingCheck?.(true);
     connection.capabilities = welcome.capabilities;
     this.attempts = 0;
     connection.heartbeat = new ApplicationHeartbeat(
@@ -416,8 +440,14 @@ export class MobileControlSession {
   private failed(connection: Connection, terminal?: ConnectionStatus): void {
     if (this.current !== connection) return;
     this.retire(connection);
+    if (this.pairingCheck) {
+      this.pause();
+      return;
+    }
     if (!this.enabled) return;
-    if (terminal || !this.environment.online() || this.attempts >= RECONNECT_LIMIT) {
+    // Keep a previously authenticated tab retrying through a typical PC reboot.
+    const retryLimit = this.previouslyConnected ? 24 : RECONNECT_LIMIT;
+    if (terminal || !this.environment.online() || this.attempts >= retryLimit) {
       this.view.showStatus(
         terminal ?? (this.environment.online() ? "computer-unavailable" : "network-unavailable"),
       );
@@ -427,7 +457,7 @@ export class MobileControlSession {
         }, "Retry");
       return;
     }
-    const delay = Math.min(4_000, 250 * 2 ** this.attempts);
+    const delay = Math.min(this.previouslyConnected ? 15_000 : 4_000, 250 * 2 ** this.attempts);
     this.attempts += 1;
     const sample = this.environment.random();
     const jitter = Number.isFinite(sample) ? Math.max(0, Math.min(1, sample)) : 0.5;
