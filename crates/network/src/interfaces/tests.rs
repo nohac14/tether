@@ -316,6 +316,48 @@ fn saved_approvals_keep_preferences_and_need_independent_continuity() {
 }
 
 #[test]
+fn startup_requires_matching_evidence_through_binding() {
+    let stable = fixture_interface("stable", vec![assigned("192.0.2.20", 24)]);
+    let mut inventory = InterfaceInventory::default();
+    inventory.refresh(Ok(vec![stable])).unwrap();
+    let network = NetworkFingerprint::new([1; 32]);
+    let saved = DesktopSettings::new(
+        Some(PORT.get()),
+        vec![id("stable")],
+        false,
+        false,
+        LogLevel::Info,
+    )
+    .unwrap()
+    .with_startup_network(Some(network))
+    .unwrap();
+    let snapshot = inventory.current().unwrap();
+    assert_eq!(
+        snapshot.restore_startup(&saved).unwrap_err(),
+        InterfaceError::AutoListenUnavailable
+    );
+    inventory.update_startup_networks(BTreeMap::from([(id("stable"), network)]));
+    let snapshot = inventory.current().unwrap();
+    let auto = snapshot.restore_startup(&saved).unwrap();
+    let manual = approve(snapshot, &["stable"]);
+    assert!(BindingPlan::new(snapshot, &auto, GENERATION).is_ok());
+    inventory.update_startup_networks(BTreeMap::from([(
+        id("stable"),
+        NetworkFingerprint::new([2; 32]),
+    )]));
+    let snapshot = inventory.current().unwrap();
+    assert_eq!(
+        BindingPlan::new(snapshot, &auto, GENERATION).unwrap_err(),
+        InterfaceError::StaleInventory
+    );
+    assert!(BindingPlan::new(snapshot, &manual, GENERATION).is_ok());
+    assert_eq!(
+        snapshot.restore_startup(&saved).unwrap_err(),
+        InterfaceError::AutoListenUnavailable
+    );
+}
+
+#[test]
 fn an_ambiguous_literal_address_cannot_be_bound_even_if_only_one_interface_was_selected() {
     let first = fixture_interface("first", vec![assigned("192.0.2.12", 24)]);
     let second = fixture_interface("second", vec![assigned("192.0.2.12", 28)]);

@@ -1,12 +1,12 @@
 //! One bounded native request at a time. A late reply can never grant authority.
 
-use super::{InterfaceError, WindowsRecord};
+use super::{InterfaceError, NetworkSample};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, sync_channel};
 use std::task::Poll;
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub(super) type Sample = Result<Vec<WindowsRecord>, InterfaceError>;
+pub(super) type Sample = Result<NetworkSample, InterfaceError>;
 
 struct Refresh {
     deadline: Instant,
@@ -114,7 +114,7 @@ mod tests {
                 blocked.recv_timeout(TEST_DEADLINE).unwrap();
                 return Err(InterfaceError::ProviderChanged);
             }
-            Ok(Vec::new())
+            Ok(NetworkSample::default())
         })
         .unwrap();
 
@@ -132,7 +132,7 @@ mod tests {
         let wait_started = Instant::now();
         loop {
             if let Poll::Ready(result) = worker.poll(now + TEST_DEADLINE) {
-                assert!(result.unwrap().is_empty());
+                assert!(result.unwrap().records.is_empty());
                 break;
             }
             assert!(wait_started.elapsed() < TEST_DEADLINE);

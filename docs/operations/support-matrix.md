@@ -73,3 +73,7 @@ actual configuration/package/browser claims accepted for that release.
 The Windows personal executable now supports closing to the tray and opting
 into hidden startup at sign-in. The packaged tray lifecycle was exercised on
 Windows. See the [Windows test record](../manual-tests/2026-11-21-windows-personal-test-build.md#windows-tray-and-startup-on-2026-11-25).
+
+The Windows test build also supports opting into automatic listening on a
+verified private network with an existing pairing. Initial native coverage
+uses a private Ethernet network on one PC.

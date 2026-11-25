@@ -148,3 +148,31 @@ the host came back. A click reused the original pairing. Closing the tab
 and opening the saved URL in a new tab in the same profile also reused
 the pairing. The host rejected any new enrollment in these checks.
 The iOS Home Screen bookmark and standalone web app still need device tests.
+
+## Automatic listening on launch
+
+The owner reported **Ready to connect** on the PC after quitting Tether
+from the tray and reopening it. In the opt-in build, the Windows host was
+run in separate processes with a temporary protected settings store and
+the approved private Ethernet endpoint. With automatic listening saved
+and zero phones, a relaunch stayed idle. After one HTTP pairing was
+approved, the next process opened the same address and port without a
+Start command, served the phone page, and authenticated a WebSocket
+upgrade with the original cookie. The probe sent no input commands.
+
+The packaged desktop showed the checkbox off by default and passed
+the tray launch, close and quit checks. The Windows workspace suite
+passed with the pre-existing opt-in native test ignored. Physical iPhone
+and Windows sign-in checks on the second PC remain open.
+
+## Phone page blocked by Windows Firewall
+
+The owner reported that the same URL loaded on the Windows PC while
+Safari kept spinning. Windows showed an enabled inbound TCP block for
+the running executable on both Private and Public profiles. The PC's
+firewall was updated with a Private TCP rule limited to this executable,
+the selected Ethernet interface, its local address and port 55001, and
+on-subnet peers. The TCP block remains enabled on Public networks and
+the UDP block remains enabled. The resulting rules were read back.
+The listener was idle after the administrator prompt. The owner then
+confirmed that the phone connection worked.

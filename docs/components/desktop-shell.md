@@ -251,4 +251,9 @@ The desktop checkbox registers the quoted current executable and its
 `--start-in-tray` argument in the current Windows user's Run key. The UI
 reads back the registration and reports Windows Startup Apps overrides.
 Keep the executable in its chosen location or enable the option again after
-moving it. Starting at sign-in leaves private-network selection manual.
+moving it. The network selection offers a separate automatic-listening
+checkbox, applied by **Start on this network**. After a restart the app
+waits up to 30 seconds for verified continuity and a valid pairing on the
+saved host. Unavailable evidence leaves the desktop ready for manual start.
+The listening window shows the complete HTTP address and port under
+**Phone address**, including before the first phone is paired.

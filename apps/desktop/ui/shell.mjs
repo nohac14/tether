@@ -6,6 +6,8 @@ const port = byId("port");
 const setup = byId("setup");
 const pair = byId("pair");
 const start = byId("start");
+const autoListen = byId("auto-listen");
+const autoListenHelp = byId("auto-listen-help");
 const qr = byId("qr");
 const notice = byId("notice");
 const devices = byId("devices");
@@ -14,6 +16,7 @@ let state;
 let pendingRequests = "";
 let displayedCode;
 let busy = false;
+let autoListenKey;
 
 const phaseLabels = {
   startup: "Starting",
@@ -52,6 +55,20 @@ function updateNetworks(networks) {
   });
   select.replaceChildren(...options);
   if (options.some((option) => option.value === earlier)) select.value = earlier;
+}
+
+function updateAutoListen(view) {
+  const network = view.networks.find(({ index }) => String(index) === select.value);
+  const available = network?.autoListenAvailable === true;
+  const key = view.revision + "/" + select.value + "/" + available;
+  if (key !== autoListenKey) {
+    autoListen.checked = network?.autoListenSaved === true;
+    autoListenKey = key;
+  }
+  autoListen.disabled = !available;
+  autoListenHelp.textContent = available
+    ? "Applies after you start the listener and pair a phone."
+    : "Automatic listening needs a verified private IPv4 network. You can still start it manually.";
 }
 
 function showCode(data) {
@@ -117,11 +134,8 @@ function display(view) {
   status.textContent = view.controlling ? "Phone in control" : phaseLabels[view.phase];
   setup.hidden = view.phase !== "choose";
   pair.hidden = view.phase !== "listening";
-  const address = byId("reconnect-address");
-  address.hidden = !view.paired || !view.listeningAddress;
-  address.textContent = address.hidden
-    ? ""
-    : "Already paired? Reopen " + view.listeningAddress + " in the same phone browser.";
+  byId("phone-address").hidden = !view.listeningAddress;
+  byId("listener-url").textContent = view.listeningAddress ?? "";
   byId("approvals").hidden = !view.pending.length;
   byId("paired").hidden = view.paired === 0;
   byId("paired-count").textContent =
@@ -139,6 +153,7 @@ function display(view) {
     port.value = String(view.port);
   }
   start.disabled = !view.networks.length;
+  updateAutoListen(view);
   if (!view.networks.length && view.phase === "choose" && !view.notice) {
     report("No private Wi-Fi or Ethernet network is available. Refresh after connecting.");
   } else if (view.notice !== state?.notice || view.revision !== state?.revision) {
@@ -160,8 +175,12 @@ start.addEventListener("click", () => {
       revision: state.revision,
       index: Number(select.value),
       port: Number(port.value),
+      autoListen: autoListen.checked && !autoListen.disabled,
     });
   }
+});
+select.addEventListener("change", () => {
+  if (state) updateAutoListen(state);
 });
 byId("refresh").addEventListener("click", () => {
   void command("refresh_networks");

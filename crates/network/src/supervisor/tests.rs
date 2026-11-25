@@ -4,11 +4,11 @@ use crate::interfaces::{
     InterfaceStatus, LinkState, NetworkProfile,
 };
 use std::cell::{Cell, RefCell};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::net::Ipv4Addr;
 use std::num::NonZeroU16;
 use std::rc::Rc;
-use tether_config::ApprovedInterfaceId;
+use tether_config::{ApprovedInterfaceId, DesktopSettings};
 use tether_input_core::{
     ButtonAction, DispatchOutcome, DispatcherConfig, EmergencyReason, InputAction, InputDispatcher,
     MockInputBackend, MouseButton, ReleaseTicket,
@@ -63,6 +63,7 @@ struct FakeDriver {
     pending: bool,
     fault: DriverFault,
     ready: VecDeque<(u8, CloseResult)>,
+    startup_network: Option<NetworkFingerprint>,
 }
 
 impl FakeDriver {
@@ -74,6 +75,7 @@ impl FakeDriver {
             pending: false,
             fault: DriverFault::None,
             ready: VecDeque::new(),
+            startup_network: None,
         }
     }
 }
@@ -110,7 +112,14 @@ impl ListenerDriver for FakeDriver {
         } else {
             Ok(self.records.clone())
         };
-        Poll::Ready(self.inventory.refresh(records).map(|_| ()))
+        if let Err(error) = self.inventory.refresh(records) {
+            return Poll::Ready(Err(error));
+        }
+        let networks = self.startup_network.map_or_else(BTreeMap::new, |network| {
+            BTreeMap::from([(self.records[0].id().clone(), network)])
+        });
+        self.inventory.update_startup_networks(networks);
+        Poll::Ready(Ok(()))
     }
 
     fn bind(&mut self, plan: BindingPlan, generation: NonZeroU64) -> Result<FakeSet, ()> {
@@ -324,6 +333,44 @@ fn start_requires_unchanged_approval_before_and_after_binding() {
         assert_eq!(trace.contains(&Event::Bind), change_after_bind);
         assert_eq!(trace.contains(&Event::DropListeners), change_after_bind);
     }
+}
+
+#[test]
+fn automatic_listener_closes_when_the_network_evidence_disappears() {
+    let now = Instant::now();
+    let (mut subject, trace) = fixture(now);
+    let network = NetworkFingerprint::new([1; 32]);
+    subject.driver.startup_network = Some(network);
+    subject.request_inventory(now).unwrap();
+    subject.poll_transition(now).unwrap();
+    let (settings, _) = approval(&subject)
+        .project_settings(&DesktopSettings::default(), false)
+        .unwrap();
+    let settings = settings.with_startup_network(Some(network)).unwrap();
+    let selection = subject
+        .inventory()
+        .current()
+        .unwrap()
+        .restore_startup(&settings)
+        .unwrap();
+    subject.start(selection, now).unwrap();
+    subject.safety.result.set(Poll::Ready(Ok(())));
+    for _ in 0..3 {
+        subject.poll_transition(now).unwrap();
+    }
+    let guard = admit(&mut subject, 1, CloseResult::Success, now);
+    subject.driver.startup_network = None;
+    let later = now + INVENTORY_INTERVAL;
+    subject.poll_transition(later).unwrap();
+    assert_eq!(
+        subject.poll_transition(later),
+        Err(SupervisorError::Interface(InterfaceError::StaleInventory))
+    );
+    assert!(!guard.is_current());
+    assert!(trace.borrow().contains(&Event::Release(
+        ReleaseCause::InterfaceChanged,
+        Some(guard.generation())
+    )));
 }
 
 #[test]

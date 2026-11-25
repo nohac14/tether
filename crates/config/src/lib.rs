@@ -13,7 +13,7 @@ pub use identity::{
 };
 pub use settings::{
     ApprovedInterfaceId, DesktopSettings, LogLevel, MAX_APPROVED_INTERFACES,
-    MAX_INTERFACE_ID_BYTES, SettingsValidationError,
+    MAX_INTERFACE_ID_BYTES, NetworkFingerprint, SettingsValidationError,
 };
 pub use store::{
     CURRENT_IDENTITY_SCHEMA_VERSION, CURRENT_SETTINGS_SCHEMA_VERSION, DeviceCookie,

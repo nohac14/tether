@@ -52,6 +52,11 @@ impl AdapterProfiles {
             NetworkProfile::Unknown
         }
     }
+
+    pub(super) fn private_network(&self) -> Option<u128> {
+        let (&id, &category) = self.0.first_key_value()?;
+        (self.0.len() == 1 && category == NLM_NETWORK_CATEGORY_PRIVATE).then_some(id)
+    }
 }
 
 struct Apartment;

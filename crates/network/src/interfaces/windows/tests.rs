@@ -134,7 +134,10 @@ fn profile_change_or_timeout_retires_the_approval_revision() {
         .unwrap();
         let mut profiles = AdapterProfiles::default();
         profiles.observe(network, profile).unwrap();
-        vec![translate_interface(&row, 1, vec![address], profiles).unwrap()]
+        NetworkSample {
+            records: vec![translate_interface(&row, 1, vec![address], profiles).unwrap()],
+            ..Default::default()
+        }
     };
     let mut provider = WindowsInterfaceProvider::default();
     let snapshot = provider

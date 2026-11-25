@@ -274,11 +274,13 @@ or permission semantics. Native package tests record those results separately.
 ## ST-002 and ST-003 implementation status
 
 The `config` crate implements the settings and installation-identity portions of
-this contract. The current exact settings envelope is schema version 2; a
-schema-version-1 fixture migrates deterministically by defaulting
+this contract. A schema-version-1 fixture migrates deterministically by defaulting
 `start_at_login` to false and log level to `info`, then commits revision `N + 1`
-before exposure. PA-003 uses the same lifetime lock and atomic document commit
-for paired devices.
+before exposure. Settings use schema version 2 until an automatic-listening
+opt-in adds a 32-byte network fingerprint to the schema-version-3 payload.
+That payload requires one approved interface and a port of at least 1024.
+Clearing the preference writes schema version 2 again. PA-003 uses the same
+lifetime lock and atomic document commit for paired devices.
 
 Implemented settings behavior includes:
 

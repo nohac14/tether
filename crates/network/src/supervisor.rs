@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::task::Poll;
 use std::time::{Duration, Instant};
+use tether_config::{ApprovedInterfaceId, NetworkFingerprint};
 
 const RELEASE_TIMEOUT: Duration = Duration::from_secs(2);
 const INVENTORY_INTERVAL: Duration = Duration::from_millis(500);
@@ -181,6 +182,7 @@ impl<H> fmt::Debug for ConnectionAuthority<H> {
 struct LiveSet<D: ListenerDriver> {
     listeners: D::Set,
     revision: u64,
+    required_network: Option<(ApprovedInterfaceId, NetworkFingerprint)>,
     generation: Arc<Generation>,
     connections: Vec<Weak<D::Shutdown>>,
 }
@@ -438,6 +440,7 @@ impl<D: ListenerDriver, S: SafetyCoordinator> ListenerSupervisor<D, S> {
         self.live = Some(LiveSet {
             listeners,
             revision,
+            required_network: approval.required_network.clone(),
             generation: Arc::new(Generation {
                 id: generation,
                 active: AtomicBool::new(false),
@@ -523,7 +526,9 @@ impl<D: ListenerDriver, S: SafetyCoordinator> ListenerSupervisor<D, S> {
         let (Some(live), Some(snapshot)) = (&self.live, self.driver.inventory().current()) else {
             return Err(InterfaceError::StaleInventory);
         };
-        if live.revision != snapshot.revision() {
+        if live.revision != snapshot.revision()
+            || !snapshot.matches_network(live.required_network.as_ref())
+        {
             return Err(InterfaceError::StaleInventory);
         }
         Ok(())

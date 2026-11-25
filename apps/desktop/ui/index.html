@@ -19,6 +19,11 @@
         <select id="network"></select>
         <label for="port">Connection port</label>
         <select id="port"></select>
+        <label for="auto-listen">
+          <input id="auto-listen" type="checkbox" disabled />
+          Listen automatically on this network when Tether opens
+        </label>
+        <p id="auto-listen-help">Applies after you start the listener and pair a phone.</p>
         <div class="actions">
           <button id="start" type="button">Start on this network</button>
           <button id="refresh" type="button" class="secondary">Refresh</button>
@@ -30,7 +35,7 @@
           <button id="stop" type="button" class="secondary">Stop control</button>
         </div>
         <p>Scan this code with your phone, then approve the request here.</p>
-        <p id="reconnect-address" hidden></p>
+        <p id="phone-address" hidden>Phone address <code id="listener-url"></code></p>
         <div class="qr">
           <canvas id="qr" role="img" aria-label="Phone pairing QR code" hidden></canvas>
         </div>

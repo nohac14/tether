@@ -2,7 +2,7 @@ use crate::SettingsValidationError;
 use crate::identity::{
     HOSTNAME_SEED_BYTES, INSTALLATION_ID_BYTES, IdentityValidationError, InstallationIdentity,
 };
-use crate::settings::{DesktopSettings, SettingsPayloadV1, SettingsPayloadV2};
+use crate::settings::{DesktopSettings, NetworkFingerprint, SettingsPayloadV1, SettingsPayloadV2};
 use serde::{Deserialize, Serialize, de::IgnoredAny};
 use std::collections::hash_map::RandomState;
 #[cfg(not(windows))]
@@ -62,7 +62,7 @@ pub use devices::{
 };
 
 /// Current on-disk settings schema.
-pub const CURRENT_SETTINGS_SCHEMA_VERSION: u32 = 2;
+pub const CURRENT_SETTINGS_SCHEMA_VERSION: u32 = 3;
 
 /// Current on-disk installation-identity schema.
 pub const CURRENT_IDENTITY_SCHEMA_VERSION: u32 = 1;
@@ -914,6 +914,22 @@ struct SettingsEnvelopeV2 {
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+struct SettingsEnvelopeV3 {
+    format: String,
+    schema_version: u32,
+    revision: u64,
+    payload: StartupSettingsPayload,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct StartupSettingsPayload {
+    settings: SettingsPayloadV2,
+    network: NetworkFingerprint,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 struct IdentityPayloadV1 {
     installation_id: String,
     hostname_seed: String,
@@ -955,14 +971,26 @@ enum DecodedSettings {
 }
 
 fn encode_snapshot(snapshot: &SettingsSnapshot) -> Result<Vec<u8>, StorageError> {
-    let envelope = SettingsEnvelopeV2 {
-        format: SETTINGS_FORMAT.to_owned(),
-        schema_version: CURRENT_SETTINGS_SCHEMA_VERSION,
-        revision: snapshot.revision.get(),
-        payload: SettingsPayloadV2::from(&snapshot.settings),
+    let payload = SettingsPayloadV2::from(&snapshot.settings);
+    let bytes = if let Some(network) = snapshot.settings.startup_network() {
+        serde_json::to_vec(&SettingsEnvelopeV3 {
+            format: SETTINGS_FORMAT.to_owned(),
+            schema_version: CURRENT_SETTINGS_SCHEMA_VERSION,
+            revision: snapshot.revision.get(),
+            payload: StartupSettingsPayload {
+                settings: payload,
+                network,
+            },
+        })
+    } else {
+        serde_json::to_vec(&SettingsEnvelopeV2 {
+            format: SETTINGS_FORMAT.to_owned(),
+            schema_version: 2,
+            revision: snapshot.revision.get(),
+            payload,
+        })
     };
-    let bytes = serde_json::to_vec(&envelope)
-        .map_err(|_| document_error(StorageProblem::InvalidEnvelope))?;
+    let bytes = bytes.map_err(|_| document_error(StorageProblem::InvalidEnvelope))?;
     if bytes.len() > SETTINGS_FILE_LIMIT {
         Err(document_error(StorageProblem::EncodedLimitExceeded))
     } else {
@@ -1022,16 +1050,33 @@ fn decode_settings(bytes: &[u8]) -> Result<DecodedSettings, StorageError> {
                 settings,
             })
         }
-        CURRENT_SETTINGS_SCHEMA_VERSION => {
+        2 => {
             let envelope: SettingsEnvelopeV2 = parse_json(bytes)?;
             if envelope.format != SETTINGS_FORMAT
-                || envelope.schema_version != CURRENT_SETTINGS_SCHEMA_VERSION
+                || envelope.schema_version != 2
                 || envelope.revision != revision.get()
             {
                 return Err(document_error(StorageProblem::InvalidEnvelope));
             }
             let settings =
                 DesktopSettings::try_from(envelope.payload).map_err(settings_validation_error)?;
+            Ok(DecodedSettings::Current(SettingsSnapshot {
+                revision,
+                settings,
+            }))
+        }
+        CURRENT_SETTINGS_SCHEMA_VERSION => {
+            let envelope: SettingsEnvelopeV3 = parse_json(bytes)?;
+            if envelope.format != SETTINGS_FORMAT
+                || envelope.schema_version != CURRENT_SETTINGS_SCHEMA_VERSION
+                || envelope.revision != revision.get()
+                || !envelope.payload.settings.auto_listen
+            {
+                return Err(document_error(StorageProblem::InvalidEnvelope));
+            }
+            let settings = DesktopSettings::try_from(envelope.payload.settings)
+                .and_then(|settings| settings.with_startup_network(Some(envelope.payload.network)))
+                .map_err(settings_validation_error)?;
             Ok(DecodedSettings::Current(SettingsSnapshot {
                 revision,
                 settings,
@@ -1909,6 +1954,37 @@ mod tests {
 
         let (_, status) = SettingsStore::open(&root).expect("current restart");
         assert_eq!(status, LoadStatus::Loaded);
+    }
+
+    #[test]
+    fn startup_network_persists_only_after_opt_in() {
+        let temporary = PrivateTempDir::new().unwrap();
+        let root = temporary.path().join("config");
+        let (mut store, _) = SettingsStore::open(&root).unwrap();
+        let current = store.snapshot().unwrap();
+        assert_eq!(current.settings().startup_network(), None);
+        let network = NetworkFingerprint::new([9; 32]);
+        let settings = DesktopSettings::new(
+            Some(55001),
+            vec![crate::ApprovedInterfaceId::new("stable".into()).unwrap()],
+            false,
+            true,
+            crate::LogLevel::Info,
+        )
+        .unwrap()
+        .with_startup_network(Some(network))
+        .unwrap();
+        let saved = store.commit(current.revision(), settings).unwrap();
+        drop(store);
+
+        let (mut store, _) = SettingsStore::open(&root).unwrap();
+        assert_eq!(store.snapshot(), Some(&saved));
+        let manual = saved.settings().clone().with_startup_network(None).unwrap();
+        let manual = store.commit(saved.revision(), manual).unwrap();
+        drop(store);
+        let (store, _) = SettingsStore::open(&root).unwrap();
+        assert_eq!(store.snapshot(), Some(&manual));
+        assert!(!manual.settings().auto_listen());
     }
 
     #[test]

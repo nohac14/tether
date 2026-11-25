@@ -3,6 +3,8 @@
 The Windows personal-build scope under ADR 0006 includes the owner-requested
 close-to-tray, tray quit and opt-in sign-in launch using the existing Windows
 pilot and session monitor. Full cross-platform DT-002 and DT-006 remain gated.
+The personal build also has a separate opt-in for automatic listening using
+Windows private-network continuity evidence. DT-003 retains its full scope.
 
 **Plan status:** Architecture accepted; personal-deployment scope follows ADR
 0001 (2026-10-23), without waiving functional/input-security requirements.

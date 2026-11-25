@@ -12,13 +12,13 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
-use tether_config::{DeviceId, DeviceRevocation, SettingsStore, StorageError};
+use std::time::{Duration, Instant, SystemTime};
+use tether_config::{DesktopSettings, DeviceId, DeviceRevocation, SettingsStore, StorageError};
 use tether_input_core::{DispatcherConfig, InputBackend, InputDispatcher};
 use tether_input_windows::WindowsBackend;
 use tether_network::assets::EmbeddedAssets;
 use tether_network::http1::StaticHttpServer;
-use tether_network::interfaces::{Interface, InterfaceInventory};
+use tether_network::interfaces::{ApprovedSelection, Interface, InterfaceInventory};
 use tether_network::supervisor::{ListenerStatus, ListenerSupervisor, SupervisorError};
 use tether_network::windows_tcp::{TcpError, TcpOperation, WindowsListenerDriver};
 use tether_pairing::{ApprovalDecision, HostScope};
@@ -32,6 +32,7 @@ const DEFAULT_PORT: u16 = 54321;
 pub const PORT_OPTIONS: [u16; 4] = [DEFAULT_PORT, 55001, 57181, 59631];
 const TICK: Duration = Duration::from_millis(16);
 const INVENTORY_POLL: Duration = Duration::from_secs(2);
+const STARTUP_NETWORK_WINDOW: Duration = Duration::from_secs(30);
 const DESKTOP_POLL: Duration = Duration::from_millis(200);
 const QR_LIFETIME: Duration = Duration::from_secs(120);
 const STOP: u8 = 1;
@@ -45,6 +46,7 @@ pub enum Command {
         revision: u64,
         index: usize,
         port: u16,
+        auto_listen: bool,
     },
     NewCode,
     Decide {
@@ -70,6 +72,8 @@ pub struct NetworkChoice {
     pub index: usize,
     pub label: String,
     pub address: IpAddr,
+    pub auto_listen_available: bool,
+    pub auto_listen_saved: bool,
 }
 
 #[derive(Clone)]
@@ -247,6 +251,7 @@ struct Reactor {
     active: Option<NonZeroU64>,
     offer: Option<(String, Instant)>,
     notice: Option<&'static str>,
+    startup_deadline: Option<Instant>,
 }
 
 fn run(
@@ -285,6 +290,11 @@ fn run(
     let origin = Instant::now();
     let (bridge, pairing_inbox, control) = pairing_channel_with_control(origin);
     let server = Arc::new(StaticHttpServer::with_pairing(assets, bridge));
+    let startup_deadline = store
+        .snapshot()
+        .filter(|snapshot| snapshot.settings().startup_network().is_some())
+        .filter(|_| has_paired_phone(&store, None, SystemTime::now()))
+        .map(|_| origin + STARTUP_NETWORK_WINDOW);
     let mut reactor = Reactor {
         listener: ListenerSupervisor::new(
             WindowsListenerDriver::default(),
@@ -299,6 +309,7 @@ fn run(
         active: None,
         offer: None,
         notice: None,
+        startup_deadline,
     };
     runtime.block_on(reactor.run(&mut actor, shared, commands, server));
     drop(actor);
@@ -369,6 +380,7 @@ impl Reactor {
                 if let Ok(command) = commands.try_recv() {
                     self.command(command, now);
                 }
+                self.restore_at_launch(now);
                 self.pairing_inbox
                     .process_one(&mut self.pairing, &mut self.store);
                 self.pairing_inbox
@@ -411,12 +423,64 @@ impl Reactor {
     }
 
     fn stop(&mut self, now: Instant) {
+        self.startup_deadline = None;
         self.requested = None;
         self.offer = None;
         if let Some(generation) = self.active.take() {
             self.pairing.retire_transport(generation);
         }
         let _ = self.listener.stop(now);
+    }
+
+    fn restore_at_launch(&mut self, now: Instant) {
+        let Some(deadline) = self.startup_deadline else {
+            return;
+        };
+        if now >= deadline {
+            self.startup_deadline = None;
+            self.notice =
+                Some("Could not verify the saved private network. Select a network to start.");
+            return;
+        }
+        if self.listener.status() != ListenerStatus::Stopped {
+            return;
+        }
+        let Some((selection, endpoint)) = self.startup_selection() else {
+            return;
+        };
+        if !WindowsBackend::desktop_available() {
+            return;
+        }
+        self.startup_deadline = None;
+        if self.listener.start(selection, now).is_ok() {
+            self.requested = Some(endpoint);
+            self.notice = None;
+        } else {
+            self.notice =
+                Some("Automatic listening could not start. Select a network to try again.");
+        }
+    }
+
+    fn startup_selection(&self) -> Option<(ApprovedSelection, SocketAddr)> {
+        let settings = self.store.snapshot()?;
+        let settings = settings.settings();
+        let inventory = self.listener.inventory().current()?;
+        let [id] = settings.approved_interfaces() else {
+            return None;
+        };
+        let record = inventory
+            .records()
+            .iter()
+            .find(|record| record.id() == id)?;
+        let address = eligible(record)?;
+        let host = HostScope::ip(address);
+        if !has_paired_phone(&self.store, Some(&host), SystemTime::now()) {
+            return None;
+        }
+        Some((
+            inventory.restore_startup(settings).ok()?,
+            SocketAddr::new(address, settings.server_port()?),
+        ))
     }
 
     fn synchronize(&mut self, actor: &mut Actor<'_>, now: Instant) {
@@ -455,8 +519,10 @@ impl Reactor {
                 revision,
                 index,
                 port,
+                auto_listen,
             } => {
-                self.notice = self.start(revision, index, port, now).err();
+                self.startup_deadline = None;
+                self.notice = self.start(revision, index, port, auto_listen, now).err();
             }
             Command::NewCode => self.issue_offer(now),
             Command::Decide {
@@ -489,6 +555,7 @@ impl Reactor {
         revision: u64,
         index: usize,
         port: u16,
+        auto_listen: bool,
         now: Instant,
     ) -> Result<(), &'static str> {
         if self.listener.status() != ListenerStatus::Stopped || !WindowsBackend::desktop_available()
@@ -516,9 +583,21 @@ impl Reactor {
         let selection = inventory
             .approve(revision, std::slice::from_ref(record.id()), port)
             .map_err(|_| "This network cannot be used for control.")?;
-        let (settings, _) = selection
+        let (mut settings, _) = selection
             .project_settings(current.settings(), false)
             .map_err(|_| "Could not save network approval.")?;
+        let selection = if auto_listen {
+            let network = inventory.startup_network(record.id())
+                .ok_or("Could not verify this network for automatic listening. Clear the checkbox to start manually.")?;
+            settings = settings
+                .with_startup_network(Some(network))
+                .map_err(|_| "Could not save automatic listening.")?;
+            inventory
+                .restore_startup(&settings)
+                .map_err(|_| "Could not verify automatic listening on this network.")?
+        } else {
+            selection
+        };
         self.store
             .commit(current.revision(), settings)
             .map_err(|_| "Could not save network approval.")?;
@@ -591,8 +670,12 @@ impl Reactor {
         } else {
             phase
         };
+        let settings = self
+            .store
+            .snapshot()
+            .map(tether_config::SettingsSnapshot::settings);
         let (inventory_revision, networks) = if phase == Phase::ChooseNetwork {
-            network_choices(self.listener.inventory())
+            network_choices(self.listener.inventory(), settings)
         } else {
             (0, Vec::new())
         };
@@ -616,10 +699,8 @@ impl Reactor {
             self.offer = None;
         }
         let session = actor.snapshot();
-        let port = self
-            .store
-            .snapshot()
-            .and_then(|current| current.settings().server_port())
+        let port = settings
+            .and_then(DesktopSettings::server_port)
             .filter(|&port| port >= 1024)
             .unwrap_or(DEFAULT_PORT);
         if let Ok(mut view) = shared.view.lock() {
@@ -638,7 +719,9 @@ impl Reactor {
                     .map_or(0, |value| value.devices().len()),
                 connected: session.connections,
                 controlling: session.has_owner,
-                notice: self.notice,
+                notice: self.notice.or(self
+                    .startup_deadline
+                    .map(|_| "Checking the saved private network.")),
             };
         }
     }
@@ -687,7 +770,19 @@ fn eligible(interface: &Interface) -> Option<IpAddr> {
         .map(tether_network::interfaces::AssignedAddress::address)
 }
 
-fn network_choices(inventory: &InterfaceInventory) -> (u64, Vec<NetworkChoice>) {
+fn has_paired_phone(store: &SettingsStore, host: Option<&HostScope>, now: SystemTime) -> bool {
+    store.devices_snapshot().is_some_and(|snapshot| {
+        snapshot
+            .devices()
+            .iter()
+            .any(|device| device.is_valid_at(now) && host.is_none_or(|host| device.host() == host))
+    })
+}
+
+fn network_choices(
+    inventory: &InterfaceInventory,
+    settings: Option<&DesktopSettings>,
+) -> (u64, Vec<NetworkChoice>) {
     inventory.current().map_or_else(
         || (0, Vec::new()),
         |snapshot| {
@@ -697,10 +792,17 @@ fn network_choices(inventory: &InterfaceInventory) -> (u64, Vec<NetworkChoice>) 
                 .enumerate()
                 .filter_map(|(index, record)| {
                     let address = eligible(record)?;
+                    let network = snapshot.startup_network(record.id());
                     Some(NetworkChoice {
                         index,
                         label: record.name().to_owned(),
                         address,
+                        auto_listen_available: network.is_some(),
+                        auto_listen_saved: network.is_some()
+                            && settings.is_some_and(|settings| {
+                                settings.approved_interfaces() == std::slice::from_ref(record.id())
+                                    && settings.startup_network() == network
+                            }),
                     })
                 })
                 .collect();

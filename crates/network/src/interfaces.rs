@@ -9,11 +9,14 @@ mod windows;
 #[cfg(windows)]
 pub use windows::WindowsInterfaceProvider;
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU64};
 use std::sync::atomic::{AtomicU64, Ordering};
-use tether_config::{ApprovedInterfaceId, DesktopSettings, MAX_APPROVED_INTERFACES};
+use tether_config::{
+    ApprovedInterfaceId, DesktopSettings, MAX_APPROVED_INTERFACES, NetworkFingerprint,
+};
 
 pub const MAX_INTERFACES: usize = 64;
 pub const MAX_ADDRESSES_PER_INTERFACE: usize = 32;
@@ -311,6 +314,7 @@ impl Interface {
 
 /// One complete inventory. The revision is allocated by the inventory owner.
 pub struct InterfaceSnapshot {
+    startup_networks: BTreeMap<ApprovedInterfaceId, NetworkFingerprint>,
     revision: u64,
     records: Vec<Interface>,
 }
@@ -359,7 +363,11 @@ impl InterfaceInventory {
                     old.checked_add(1)
                 })
                 .map_err(|_| InterfaceError::RevisionExhausted)?;
-            Ok(Some(InterfaceSnapshot { revision, records }))
+            Ok(Some(InterfaceSnapshot {
+                revision,
+                records,
+                startup_networks: BTreeMap::new(),
+            }))
         });
         match prepared {
             Ok(Some(snapshot)) => Ok(self.current.insert(snapshot)),
@@ -368,6 +376,18 @@ impl InterfaceInventory {
                 self.retire();
                 Err(error)
             }
+        }
+    }
+}
+
+impl InterfaceInventory {
+    #[cfg(any(windows, test))]
+    pub(crate) fn update_startup_networks(
+        &mut self,
+        networks: BTreeMap<ApprovedInterfaceId, NetworkFingerprint>,
+    ) {
+        if let Some(snapshot) = &mut self.current {
+            snapshot.startup_networks = networks;
         }
     }
 }
@@ -381,6 +401,40 @@ impl InterfaceSnapshot {
     #[must_use]
     pub fn records(&self) -> &[Interface] {
         &self.records
+    }
+
+    #[must_use]
+    pub fn startup_network(&self, id: &ApprovedInterfaceId) -> Option<NetworkFingerprint> {
+        self.startup_networks.get(id).copied()
+    }
+
+    pub(crate) fn matches_network(
+        &self,
+        requirement: Option<&(ApprovedInterfaceId, NetworkFingerprint)>,
+    ) -> bool {
+        requirement.is_none_or(|(id, network)| self.startup_network(id) == Some(*network))
+    }
+
+    /// Reconstructs an approved private binding with a fresh, matching fingerprint.
+    ///
+    /// # Errors
+    /// Requires a single approved interface and a matching saved fingerprint.
+    pub fn restore_startup(
+        &self,
+        settings: &DesktopSettings,
+    ) -> Result<ApprovedSelection, InterfaceError> {
+        let [id] = settings.approved_interfaces() else {
+            return Err(InterfaceError::AutoListenUnavailable);
+        };
+        let network = settings
+            .startup_network()
+            .ok_or(InterfaceError::AutoListenUnavailable)?;
+        if self.startup_network(id) != Some(network) {
+            return Err(InterfaceError::AutoListenUnavailable);
+        }
+        let mut selection = self.restore(settings, AutoListenContext::Confirmed)?;
+        selection.required_network = Some((id.clone(), network));
+        Ok(selection)
     }
 
     /// Records explicit local approval for the current records and selected port.
@@ -424,6 +478,7 @@ impl InterfaceSnapshot {
             revision: self.revision,
             selected,
             port,
+            required_network: None,
         })
     }
 
@@ -463,6 +518,7 @@ pub struct ApprovedSelection {
     revision: u64,
     selected: Vec<Interface>,
     port: NonZeroU16,
+    pub(crate) required_network: Option<(ApprovedInterfaceId, NetworkFingerprint)>,
 }
 
 impl ApprovedSelection {
@@ -529,7 +585,9 @@ impl BindingPlan {
         approval: &ApprovedSelection,
         generation: NonZeroU64,
     ) -> Result<Self, InterfaceError> {
-        if current.revision != approval.revision {
+        if current.revision != approval.revision
+            || !current.matches_network(approval.required_network.as_ref())
+        {
             return Err(InterfaceError::StaleInventory);
         }
         let mut addresses = Vec::new();

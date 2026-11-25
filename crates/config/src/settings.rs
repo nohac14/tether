@@ -15,6 +15,7 @@ pub enum SettingsValidationError {
     TooManyApprovedInterfaces,
     DuplicateInterfaceId,
     InvalidServerPort,
+    InvalidStartupNetwork,
 }
 
 impl fmt::Display for SettingsValidationError {
@@ -25,6 +26,9 @@ impl fmt::Display for SettingsValidationError {
             Self::TooManyApprovedInterfaces => "too many approved interface identities",
             Self::DuplicateInterfaceId => "approved interface identity is duplicated",
             Self::InvalidServerPort => "server port must be non-zero",
+            Self::InvalidStartupNetwork => {
+                "automatic listening needs one interface and a user port"
+            }
         })
     }
 }
@@ -94,6 +98,25 @@ pub struct DesktopSettings {
     auto_listen: bool,
     start_at_login: bool,
     log_level: LogLevel,
+    startup_network: Option<NetworkFingerprint>,
+}
+
+/// Bounded, opaque hash of local network continuity evidence.
+#[derive(Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct NetworkFingerprint([u8; 32]);
+
+impl NetworkFingerprint {
+    #[must_use]
+    pub const fn new(digest: [u8; 32]) -> Self {
+        Self(digest)
+    }
+}
+
+impl fmt::Debug for NetworkFingerprint {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("NetworkFingerprint(<redacted>)")
+    }
 }
 
 impl DesktopSettings {
@@ -141,6 +164,7 @@ impl DesktopSettings {
             auto_listen,
             start_at_login,
             log_level,
+            startup_network: None,
         })
     }
 
@@ -168,6 +192,28 @@ impl DesktopSettings {
     pub const fn log_level(&self) -> LogLevel {
         self.log_level
     }
+
+    #[must_use]
+    pub const fn startup_network(&self) -> Option<NetworkFingerprint> {
+        self.startup_network
+    }
+
+    /// # Errors
+    /// A saved network requires exactly one interface and a non-privileged port.
+    pub fn with_startup_network(
+        mut self,
+        network: Option<NetworkFingerprint>,
+    ) -> Result<Self, SettingsValidationError> {
+        if network.is_some()
+            && (self.approved_interfaces.len() != 1
+                || self.server_port.is_none_or(|port| port < 1024))
+        {
+            return Err(SettingsValidationError::InvalidStartupNetwork);
+        }
+        self.startup_network = network;
+        self.auto_listen = network.is_some();
+        Ok(self)
+    }
 }
 
 impl Default for DesktopSettings {
@@ -178,6 +224,7 @@ impl Default for DesktopSettings {
             auto_listen: false,
             start_at_login: false,
             log_level: LogLevel::Info,
+            startup_network: None,
         }
     }
 }
@@ -191,6 +238,7 @@ impl fmt::Debug for DesktopSettings {
             .field("auto_listen", &self.auto_listen)
             .field("start_at_login", &self.start_at_login)
             .field("log_level", &self.log_level)
+            .field("startup_network", &self.startup_network)
             .finish()
     }
 }

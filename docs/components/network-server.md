@@ -451,10 +451,15 @@ and indexes are rechecked across collection because native APIs are not one
 atomic transaction. NW-003 must refresh before binding and stop/revalidate on
 errors or change; DS-003 supplies ongoing address-change coordination. No
 inventory guarantees absence of changes after it returns. Stable interface IDs
-do not prove network continuity. Until the core has independent continuity
-evidence, auto-listen restoration must use `AutoListenContext::Unknown` and
-require fresh foreground confirmation; it must not manufacture an unchanged
-context merely because snapshots match.
+do not prove network continuity. Auto-listen restoration remains closed when
+independent evidence is unavailable. The Windows personal build samples the
+private Network List Manager profile and the unique on-link IPv4 default
+gateway with its resolved link-layer address. Both samples must agree. The
+saved SHA-256 fingerprint also covers the eligible PC addresses and prefixes.
+The supervisor checks the fingerprint before and after binding and on its
+normal inventory refresh. An absent or changed fingerprint closes automatic
+admission through the ordinary lifecycle and input release path. The evidence
+is a local network continuity check alongside authenticated peer admission.
 
 On this Mac, the explicit aggregate-only diagnostic observed 22 interfaces,
 four persistent associations, one proposed Wi-Fi candidate, and unchanged

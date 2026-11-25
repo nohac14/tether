@@ -39,12 +39,18 @@ fn main() -> Result<(), tether_network::interfaces::InterfaceError> {
         .filter(|record| record.status().profile == NetworkProfile::Public)
         .count();
     let second = provider.refresh()?;
+    let startup_verified = second
+        .records()
+        .iter()
+        .filter(|record| second.startup_network(record.id()).is_some())
+        .count();
     println!("Interfaces: {interface_count}");
     println!("Eligible address rows: {preferred_addresses}");
     println!("IPv6 address rows: {ipv6}");
     println!("Private profile adapters: {private}");
     println!("Public profile adapters: {public}");
     println!("Default proposals: {proposed}");
+    println!("Automatic listening candidates: {startup_verified}");
     println!(
         "Unchanged revision on repeat: {}",
         second.revision() == revision

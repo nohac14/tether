@@ -30,10 +30,13 @@ struct View {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Network {
     index: usize,
     label: String,
     address: String,
+    auto_listen_available: bool,
+    auto_listen_saved: bool,
 }
 
 #[derive(Serialize)]
@@ -105,6 +108,8 @@ impl From<Snapshot> for View {
                     index: choice.index,
                     label: choice.label,
                     address: choice.address.to_string(),
+                    auto_listen_available: choice.auto_listen_available,
+                    auto_listen_saved: choice.auto_listen_saved,
                 })
                 .collect(),
             port: state.port,
@@ -141,11 +146,13 @@ fn start_network(
     revision: &str,
     index: usize,
     port: u16,
+    auto_listen: bool,
 ) -> Result<(), &'static str> {
     pilot.0.send(Command::Start {
         revision: parse_id(revision)?,
         index,
         port,
+        auto_listen,
     })
 }
 

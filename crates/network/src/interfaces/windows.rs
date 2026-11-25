@@ -14,7 +14,7 @@ use std::slice;
 use std::task::Poll;
 use std::thread;
 use std::time::{Duration, Instant};
-use tether_config::ApprovedInterfaceId;
+use tether_config::{ApprovedInterfaceId, NetworkFingerprint};
 use windows::Win32::Foundation::{ERROR_NOT_FOUND, NO_ERROR, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{
     FreeMibTable, GetIfTable2Ex, GetUnicastIpAddressTable, IF_TYPE_ETHERNET_CSMACD,
@@ -39,6 +39,7 @@ const LINK_UNAVAILABLE: u8 = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6);
 const MAX_NATIVE_ADDRESSES: usize = MAX_INTERFACES * MAX_ADDRESSES_PER_INTERFACE;
 const REFRESH_DEADLINE: Duration = Duration::from_secs(2);
 
+mod continuity;
 mod profile;
 mod worker;
 
@@ -51,6 +52,12 @@ struct WindowsRecord {
     network_guid: u128,
     profiles: AdapterProfiles,
     interface: Interface,
+}
+
+#[derive(Default)]
+struct NetworkSample {
+    records: Vec<WindowsRecord>,
+    startup_networks: BTreeMap<ApprovedInterfaceId, NetworkFingerprint>,
 }
 
 /// A serialized, read-only provider. The dedicated worker runs IP Helper and
@@ -118,10 +125,13 @@ impl WindowsInterfaceProvider {
 
     fn publish(
         &mut self,
-        refreshed: Result<Vec<WindowsRecord>, InterfaceError>,
+        refreshed: Result<NetworkSample, InterfaceError>,
     ) -> Result<&InterfaceSnapshot, InterfaceError> {
-        let records = match refreshed {
-            Ok(records) => records,
+        let NetworkSample {
+            records,
+            startup_networks,
+        } = match refreshed {
+            Ok(sample) => sample,
             Err(error) => {
                 self.inventory.retire();
                 self.previous.clear();
@@ -136,7 +146,11 @@ impl WindowsInterfaceProvider {
             .map(|record| record.interface.clone())
             .collect();
         self.previous = records;
-        self.inventory.refresh(Ok(interfaces))
+        self.inventory.refresh(Ok(interfaces))?;
+        self.inventory.update_startup_networks(startup_networks);
+        self.inventory
+            .current()
+            .ok_or(InterfaceError::StaleInventory)
     }
 
     #[must_use]
@@ -145,14 +159,20 @@ impl WindowsInterfaceProvider {
     }
 }
 
-fn read_consistent_records() -> Result<Vec<WindowsRecord>, InterfaceError> {
+fn read_consistent_records() -> Result<NetworkSample, InterfaceError> {
     let reader = ProfileReader::new()?;
     let first = read_records(reader.read()?)?;
+    let first_networks = continuity::sample(&first);
     let second = read_records(reader.read()?)?;
     if first != second {
         return Err(InterfaceError::ProviderChanged);
     }
-    Ok(second)
+    let mut startup_networks = continuity::sample(&second);
+    startup_networks.retain(|id, network| first_networks.get(id) == Some(network));
+    Ok(NetworkSample {
+        records: second,
+        startup_networks,
+    })
 }
 
 struct MibTable<T>(NonNull<T>);

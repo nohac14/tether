@@ -34,15 +34,20 @@ Runtime. It opens a local window and waits for you to select a network.
    To exit, right-click the Tether icon in the Windows system tray and choose
    **Quit Tether**.
 
-The personal Windows build starts listening only after **Start on this
-network**. To launch the app in the tray when you sign in to Windows, check
-**Start Tether in the tray when I sign in**. You still select **Start on this
-network** after sign-in. You can keep a paired phone's page on the iPhone Home Screen.
+To start the listener automatically when opening Tether, select your private
+network, check **Listen automatically on this network when Tether opens**,
+and click **Start on this network**. Future launches can listen when an
+existing pairing is valid and Windows can verify the same network and PC
+address. If the network or address changes, select the network manually.
+To also open Tether in the tray when you sign in to Windows, check **Start
+Tether in the tray when I sign in**.
+
+You can keep a paired phone's page on the iPhone Home Screen.
 On iOS 26, turn off **Open as Web App** when adding the page if you want
 the shortcut to open in your default browser. Use the same browser profile
 you paired with.
 Reopen that page after starting Tether on the same address and port. The PC
-window shows the reconnect URL while listening. A fresh page tries once.
+window shows the full phone address whenever it is listening. A fresh page tries once.
 Tap **Reconnect** if the PC took longer to start or you return to a paused
 page. Scanning a pairing QR in a browser that still
 has its valid credential also reconnects the existing phone. Pairing

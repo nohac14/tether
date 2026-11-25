@@ -110,6 +110,11 @@ impl PairedDevice {
         (self.issued_at..self.expires_at).contains(&now)
             && self.last_seen.is_none_or(|seen| seen <= now)
     }
+
+    #[must_use]
+    pub fn is_valid_at(&self, now: SystemTime) -> bool {
+        unix_seconds(now).is_ok_and(|now| self.valid_at(now))
+    }
 }
 
 #[derive(Clone)]

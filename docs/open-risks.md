@@ -256,9 +256,11 @@ layer's close-default/serialization policy. See the
 The [Windows profile and TCP checkpoint](manual-tests/2026-11-20-windows-network-profiles-and-tcp.md)
 records native IP Helper and Network List Manager queries plus loopback
 socket checks. Windows profile metadata invalidates approvals when a
-change is observed. Independent continuity for automatic startup and
-rebind, physical DHCP, multi-adapter containment, Windows firewall
-behavior and native IPv6 LAN reachability remain open.
+change is observed. The Windows personal build reads the default IPv4
+gateway and its link-layer address to corroborate the private profile for
+automatic startup. Qualification across boots, Wi-Fi and multiple adapters
+remains open. Physical DHCP, Windows firewall behavior and native IPv6 LAN
+reachability also remain open.
 
 The [listener supervisor checkpoint](manual-tests/2026-11-20-listener-supervisor.md)
 adds loopback authority revocation and mock dispatcher release evidence.
