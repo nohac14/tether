@@ -32,14 +32,13 @@ import {
 export const SUBPROTOCOL = "tether.control.v1";
 const HELLO_TIMEOUT = 5_000;
 const SEND_BUFFER_LIMIT = 32 * 1024;
-const RECONNECT_LIMIT = 5;
 const buttonId = { left: MouseButton.LEFT, right: MouseButton.RIGHT, middle: MouseButton.MIDDLE };
 
 export interface ControlView {
   showStatus(status: ConnectionStatus): void;
   setSurfaceSink(sink?: (action: SurfaceAction) => void): void;
   setKeyboardSink(sink?: KeyboardBinding): void;
-  setControlRequest(request?: () => void, label?: "Take control" | "Retry"): void;
+  setControlRequest(request?: () => void, label?: "Take control" | "Reconnect"): void;
 }
 
 interface ConnectionEvents {
@@ -56,7 +55,6 @@ interface SocketPort {
 
 export interface ControlEnvironment extends FrameClock, HeartbeatClock {
   open(url: string, events: ConnectionEvents): SocketPort;
-  random(): number;
   online(): boolean;
 }
 
@@ -88,10 +86,6 @@ export function controlUrl(origin: string): string | undefined {
 /** Owns the only socket, ordered input queue and heartbeat for this page. */
 export class MobileControlSession {
   private current: Connection | undefined;
-  private retry: number | undefined;
-  private attempts = 0;
-  private enabled = false;
-  private previouslyConnected = false;
   private pairingCheck?: (connected: boolean) => void;
 
   constructor(
@@ -101,9 +95,7 @@ export class MobileControlSession {
   ) {}
 
   start(): void {
-    this.enabled = true;
-    if (this.current || this.retry !== undefined) return;
-    this.attempts = 0;
+    if (this.current) return;
     this.open();
   }
 
@@ -128,9 +120,6 @@ export class MobileControlSession {
 
   pause(reason?: ClientLeavingReason): void {
     this.pairingCheck?.(false);
-    this.enabled = false;
-    if (this.retry !== undefined) this.environment.cancel(this.retry);
-    this.retry = undefined;
     this.view.setControlRequest();
     const current = this.current;
     if (current) {
@@ -144,10 +133,17 @@ export class MobileControlSession {
     }
   }
 
+  offerReconnect(reason: "disconnected" | "computer-unavailable" | "network-unavailable"): void {
+    this.view.showStatus(reason);
+    this.view.setControlRequest(() => {
+      this.start();
+    }, "Reconnect");
+  }
+
   private open(): void {
-    if (!this.enabled || !this.url) return;
+    if (!this.url) return;
     if (!this.environment.online()) {
-      this.view.showStatus("network-unavailable");
+      this.offerReconnect("network-unavailable");
       return;
     }
     const connection: Connection = {
@@ -158,7 +154,7 @@ export class MobileControlSession {
     };
     this.current = connection;
     this.view.setControlRequest();
-    this.view.showStatus(this.attempts === 0 ? "connecting" : "reconnecting");
+    this.view.showStatus("connecting");
     connection.helloTimer = this.environment.schedule(() => {
       this.failed(connection);
     }, HELLO_TIMEOUT);
@@ -283,10 +279,8 @@ export class MobileControlSession {
     if (connection.helloTimer !== undefined) this.environment.cancel(connection.helloTimer);
     delete connection.helloTimer;
     connection.welcome = welcome;
-    this.previouslyConnected = true;
     this.pairingCheck?.(true);
     connection.capabilities = welcome.capabilities;
-    this.attempts = 0;
     connection.heartbeat = new ApplicationHeartbeat(
       this.environment,
       {
@@ -444,31 +438,13 @@ export class MobileControlSession {
       this.pause();
       return;
     }
-    if (!this.enabled) return;
-    // Keep a previously authenticated tab retrying through a typical PC reboot.
-    const retryLimit = this.previouslyConnected ? 24 : RECONNECT_LIMIT;
-    if (terminal || !this.environment.online() || this.attempts >= retryLimit) {
-      this.view.showStatus(
-        terminal ?? (this.environment.online() ? "computer-unavailable" : "network-unavailable"),
+    if (terminal) {
+      this.view.showStatus(terminal);
+    } else {
+      this.offerReconnect(
+        this.environment.online() ? "computer-unavailable" : "network-unavailable",
       );
-      if (!terminal && this.environment.online())
-        this.view.setControlRequest(() => {
-          this.start();
-        }, "Retry");
-      return;
     }
-    const delay = Math.min(this.previouslyConnected ? 15_000 : 4_000, 250 * 2 ** this.attempts);
-    this.attempts += 1;
-    const sample = this.environment.random();
-    const jitter = Number.isFinite(sample) ? Math.max(0, Math.min(1, sample)) : 0.5;
-    this.retry = this.environment.schedule(
-      () => {
-        this.retry = undefined;
-        this.open();
-      },
-      Math.round(delay * (0.75 + jitter * 0.25)),
-    );
-    this.view.showStatus("reconnecting");
   }
 }
 

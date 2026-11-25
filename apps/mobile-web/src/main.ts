@@ -16,7 +16,6 @@ if (root) {
     cancelFrame: (frame) => {
       window.cancelAnimationFrame(frame);
     },
-    random: () => Math.random(),
     online: () => navigator.onLine,
     open(url, events) {
       const socket = new WebSocket(url, SUBPROTOCOL);
@@ -51,11 +50,16 @@ if (root) {
     },
   });
   let pairingBlocksControl = location.hash.startsWith("#pair=");
+  let started = false;
   const startControl = () => {
-    if (!pairingBlocksControl && !document.hidden) control.start();
+    if (!started && !pairingBlocksControl && !document.hidden) {
+      started = true;
+      control.start();
+    }
   };
   const pauseControl = () => {
     control.pause(ClientLeavingReason.PAGE_HIDE);
+    if (started && !pairingBlocksControl) control.offerReconnect("disconnected");
   };
   const visibility = () => {
     if (document.hidden) pauseControl();
@@ -63,16 +67,18 @@ if (root) {
   };
   const offline = () => {
     control.pause();
-    if (!pairingBlocksControl) shell.showStatus("network-unavailable");
+    if (!pairingBlocksControl) control.offerReconnect("network-unavailable");
   };
   const disposePairing = watchPairing(
     (status) => {
       if (status === "reconnected") {
         pairingBlocksControl = false;
+        started = true;
         return;
       }
       pairingBlocksControl = status !== "paired";
       if (pairingBlocksControl) control.pause();
+      else started = false;
       shell.showStatus(status);
       startControl();
     },
@@ -82,7 +88,6 @@ if (root) {
   startControl();
   document.addEventListener("visibilitychange", visibility);
   window.addEventListener("pageshow", startControl);
-  window.addEventListener("online", startControl);
   window.addEventListener("offline", offline);
   window.addEventListener("pagehide", (event) => {
     pauseControl();
@@ -90,7 +95,6 @@ if (root) {
       disposePairing();
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pageshow", startControl);
-      window.removeEventListener("online", startControl);
       window.removeEventListener("offline", offline);
       shell.dispose();
     }

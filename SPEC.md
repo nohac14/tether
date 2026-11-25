@@ -1246,15 +1246,16 @@ When the PC's IP changes:
 
 ### 18.4 Reconnection
 
-The mobile client must automatically attempt reconnection.
-
-Use bounded exponential backoff with jitter.
+On a fresh page launch, the mobile client attempts one connection using any
+existing pairing for that origin. If the connection fails or later closes,
+the page offers a Reconnect button. Each tap starts one bounded attempt.
+A page restored after backgrounding offers the same button.
 
 Display useful states:
 
 - Connecting.
 - Connected.
-- Reconnecting.
+- Disconnected with a Reconnect action.
 - Authentication required.
 - Computer unavailable.
 - Network unavailable.

@@ -14,16 +14,13 @@ capabilities advertised for the current controller. All outgoing application
 messages share one sequence, timestamp and epoch source.
 
 Page hide sends a best-effort leaving message and drops the socket, input
-queue, timers and keyboard state. A return or reconnect creates a new
-connection with no held input. Requests retry with bounded exponential
-jitter, with a Retry action once the browser exhausts those attempts. The
-browser can display confirmed protocol incompatibility and authorization
-loss. It cannot inspect a failed WebSocket upgrade's HTTP status, so an
-opaque connection failure offers Retry and asks the user to check the listener
-address and port. An authenticated tab retries up to 24 times after losing
-the PC, with delays capped at 15 seconds. A newly scanned pairing QR first
-tries the existing browser credential on the ordinary control socket. A valid
-welcome reuses that session without posting a pairing request.
+queue, timers and keyboard state. A fresh foreground page tries once. A
+failed connection or a return to a paused page offers **Reconnect**. Each
+tap opens a new connection with its own hello deadline and no held input.
+Explicit protocol or authorization failures display their respective status.
+A newly scanned pairing QR first tries the existing browser credential on
+the ordinary control socket. A valid welcome reuses that session without
+posting a pairing request.
 
 The [Windows loopback record](../manual-tests/2026-11-21-windows-control-session.md)
 describes the built app's headless Edge test against the real store and

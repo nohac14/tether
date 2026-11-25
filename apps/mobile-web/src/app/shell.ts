@@ -10,7 +10,6 @@ export type ConnectionStatus =
   | "paired"
   | "pairing-unavailable"
   | "connecting"
-  | "reconnecting"
   | "computer-unavailable"
   | "network-unavailable"
   | "control-unavailable"
@@ -24,10 +23,8 @@ const statusText: Record<ConnectionStatus, string> = {
   paired: "Pairing approved",
   "pairing-unavailable": "Scan a new pairing QR code",
   connecting: "Connecting",
-  reconnecting: "Reconnecting",
-  "computer-unavailable":
-    "Open Tether on the PC, start it on the same address and port, then tap Retry.",
-  "network-unavailable": "Network unavailable",
+  "computer-unavailable": "Start Tether on the PC, then tap Reconnect.",
+  "network-unavailable": "Check your Wi-Fi, then tap Reconnect.",
   "control-unavailable": "Connected · Input paused on the PC",
   standby: "Connected · Standby",
   controlling: "Connected · In control",
@@ -38,7 +35,7 @@ export function mountShell(root: HTMLElement): {
   showStatus(status: ConnectionStatus): void;
   setSurfaceSink(sink?: (action: SurfaceAction) => void): void;
   setKeyboardSink(sink?: KeyboardBinding): void;
-  setControlRequest(request?: () => void, label?: "Take control" | "Retry"): void;
+  setControlRequest(request?: () => void, label?: "Take control" | "Reconnect"): void;
   dispose(): void;
 } {
   const status = root.querySelector("#status");

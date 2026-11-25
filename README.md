@@ -38,9 +38,13 @@ The personal Windows build starts listening only after **Start on this
 network**. To launch the app in the tray when you sign in to Windows, check
 **Start Tether in the tray when I sign in**. You still select **Start on this
 network** after sign-in. You can keep a paired phone's page on the iPhone Home Screen.
+On iOS 26, turn off **Open as Web App** when adding the page if you want
+the shortcut to open in your default browser. Use the same browser profile
+you paired with.
 Reopen that page after starting Tether on the same address and port. The PC
-window shows the reconnect URL while listening. Tap **Retry** on the phone
-if the PC took longer to start. Scanning a pairing QR in a browser that still
+window shows the reconnect URL while listening. A fresh page tries once.
+Tap **Reconnect** if the PC took longer to start or you return to a paused
+page. Scanning a pairing QR in a browser that still
 has its valid credential also reconnects the existing phone. Pairing
 expires after 30 days without an authenticated connection. A changed PC IP or
 cleared browser data can require pairing again.

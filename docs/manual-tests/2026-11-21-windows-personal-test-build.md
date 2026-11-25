@@ -139,3 +139,12 @@ after a 12-second outage. The tab regained control automatically. Reloading
 and reopening a previously scanned QR in a fresh document both reused the
 credential. The restarted host failed the test if any new approval appeared.
 A second-PC reboot with the revised build and physical Safari remains untested.
+
+## Reconnect button and saved URL
+
+Headless Edge on Windows kept the phone page open across the same
+loopback host-process restart. The page showed Reconnect and waited after
+the host came back. A click reused the original pairing. Closing the tab
+and opening the saved URL in a new tab in the same profile also reused
+the pairing. The host rejected any new enrollment in these checks.
+The iOS Home Screen bookmark and standalone web app still need device tests.

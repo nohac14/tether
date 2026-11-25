@@ -44,6 +44,7 @@ function setup() {
   const status: ConnectionStatus[] = [];
   const sockets: FakeSocket[] = [];
   let request: (() => void) | undefined;
+  let requestLabel: string | undefined;
   let surface: ((value: SurfaceAction) => void) | undefined;
   let keyboard: KeyboardBinding | undefined;
   let online = true;
@@ -142,8 +143,9 @@ function setup() {
       setKeyboardSink(value) {
         keyboard = value;
       },
-      setControlRequest(value) {
+      setControlRequest(value, label) {
         request = value;
+        requestLabel = label;
       },
     },
     {
@@ -156,7 +158,6 @@ function setup() {
       cancelFrame(frame) {
         timers.delete(frame);
       },
-      random: () => 1,
       online: () => online,
       open(url, events) {
         const socket = new FakeSocket(url, events);
@@ -189,6 +190,9 @@ function setup() {
     advance,
     get request() {
       return request;
+    },
+    get requestLabel() {
+      return requestLabel;
     },
     get surface() {
       return surface;
@@ -253,7 +257,10 @@ describe("mobile control connection", () => {
     socket.closeFromServer(1006);
     expect(f.surface).toBeUndefined();
     expect(f.keyboard).toBeUndefined();
-    f.advance(250);
+    f.advance(120_000);
+    expect(f.sockets).toHaveLength(1);
+    expect(f.requestLabel).toBe("Reconnect");
+    f.request?.();
     const next = f.socket(1);
     next.open();
     expect(next.envelopes().map((message) => message.payload.case)).toEqual(["clientHello"]);
@@ -316,35 +323,24 @@ describe("mobile control connection", () => {
     expect(f.sockets).toHaveLength(2);
   });
 
-  it("keeps an authenticated tab retrying through a reboot", () => {
+  it("waits for a tap when the first attempt times out or the phone is offline", () => {
     const f = setup();
     f.session.start();
-    f.socket(0).open();
-    f.socket(0).greet(control(ControlStateKind.NO_CONTROLLER));
-    for (const wait of [250, 500, 1000, 2000, 4000, 8000, 15000, 15000]) {
-      f.sockets.at(-1)?.closeFromServer(1006);
-      f.advance(wait);
-    }
-    expect(f.sockets).toHaveLength(9);
-    f.socket(8).open();
-    f.socket(8).greet(control(ControlStateKind.CONTROLLING));
-    expect(f.status.at(-1)).toBe("controlling");
-  });
-
-  it("bounds repeated failures and allows the user to restart attempts", () => {
-    const f = setup();
-    f.session.start();
-    for (const wait of [250, 500, 1000, 2000, 4000]) {
-      f.sockets.at(-1)?.closeFromServer(1006);
-      f.advance(wait);
-    }
-    expect(f.sockets).toHaveLength(6);
-    f.sockets.at(-1)?.closeFromServer(1006);
-    f.advance(10_000);
-    expect(f.sockets).toHaveLength(6);
+    f.advance(120_000);
+    expect(f.sockets).toHaveLength(1);
+    expect(f.socket(0).closed).toBe(true);
     expect(f.status.at(-1)).toBe("computer-unavailable");
     f.setOnline(false);
     f.request?.();
     expect(f.status.at(-1)).toBe("network-unavailable");
+    expect(f.requestLabel).toBe("Reconnect");
+    f.setOnline(true);
+    f.advance(120_000);
+    expect(f.sockets).toHaveLength(1);
+    f.request?.();
+    expect(f.request).toBeUndefined();
+    f.socket(1).open();
+    f.socket(1).greet(control(ControlStateKind.CONTROLLING));
+    expect(f.status.at(-1)).toBe("controlling");
   });
 });
